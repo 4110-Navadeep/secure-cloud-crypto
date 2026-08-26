@@ -12,16 +12,24 @@
 </head>
 <body class="app-body">
 
-  <!-- Top Navigation -->
+  <!-- Navigation -->
   <nav class="app-nav">
     <a href="/" class="nav-brand">
       <span class="brand-icon">🔐</span>
-      <span class="brand-name">SECURE <span class="brand-accent">CLOUD</span></span>
+      <span class="brand-name">SECURE <span class="brand-accent">CRYPT</span></span>
     </a>
     <div class="app-nav-links">
-      <a href="/encrypt.html" class="app-nav-link active" id="nav-encrypt">🔒 Encrypt</a>
-      <a href="/decrypt.html" class="app-nav-link" id="nav-decrypt">🔓 Decrypt</a>
+      <a href="/" class="app-nav-link">Home</a>
+      <a href="/dashboard.html" class="app-nav-link">Dashboard</a>
+      <a href="/encrypt.html" class="app-nav-link active">Secure File</a>
+      <a href="/verify.html" class="app-nav-link">Verify</a>
+      <a href="/how-it-works.html" class="app-nav-link">How It Works</a>
+      <a href="/security.html" class="app-nav-link">Security</a>
     </div>
+    <div class="app-nav-cta">
+      <a href="/encrypt.html" class="btn-nav-cta">Get Started</a>
+    </div>
+    <button class="hamburger" id="hamburger-btn" aria-label="Menu">☰</button>
   </nav>
 
   <!-- Main -->
@@ -234,12 +242,29 @@
 
           <div class="result-note">
             <span>💡</span>
-            <span>Share this .secure package via any channel. Use the <a href="/decrypt.html" class="result-link">Decrypt page</a> to recover the file later.</span>
+            <span>Share this .secure package via any channel. Use the <a href="/verify.html" class="result-link">Verify page</a> to recover the file later.</span>
           </div>
         </div>
       </div>
     </div>
   </main>
+
+  <!-- Footer -->
+  <footer class="home-footer">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <span class="brand-icon">🔐</span> SECURE CRYPT
+        <span class="footer-tagline">— Protect your files before you share them.</span>
+      </div>
+      <div class="footer-actions">
+        <a href="/encrypt.html" class="btn-footer">🔒 Secure File</a>
+        <a href="/verify.html" class="btn-footer btn-footer-outline">🔓 Open Package</a>
+      </div>
+      <div class="footer-meta">
+        © 2026 Secure Cloud Crypto · Capstone Project
+      </div>
+    </div>
+  </footer>
 
   <div id="toast-container"></div>
 
@@ -410,6 +435,10 @@
           : (selectedFile.name.replace(/\.[^.]+$/, '') + '.secure');
 
         showResult(h);
+        logLocalActivity(selectedFile.name, 'ENCRYPT', 'success');
+        if (sigToggle.checked) {
+          logLocalActivity(selectedFile.name, 'SIGN', 'success');
+        }
         showToast('File encrypted successfully!', 'success');
       } catch (err) {
         await animPromise.catch(() => {});

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Dashboard — Secure Crypt Workspace</title>
+  <meta name="description" content="Secure Crypt Activity Dashboard — View local cryptographic logs, metrics, engine statuses, and statistics.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-body">
+
+  <!-- Navigation -->
+  <nav class="app-nav">
+    <a href="/" class="nav-brand">
+      <span class="brand-icon">🔐</span>
+      <span class="brand-name">SECURE <span class="brand-accent">CRYPT</span></span>
+    </a>
+    <div class="app-nav-links">
+      <a href="/" class="app-nav-link">Home</a>
+      <a href="/dashboard.html" class="app-nav-link active">Dashboard</a>
+      <a href="/encrypt.html" class="app-nav-link">Secure File</a>
+      <a href="/verify.html" class="app-nav-link">Verify</a>
+      <a href="/how-it-works.html" class="app-nav-link">How It Works</a>
+      <a href="/security.html" class="app-nav-link">Security</a>
+    </div>
+    <div class="app-nav-cta">
+      <a href="/encrypt.html" class="btn-nav-cta">Get Started</a>
+    </div>
+    <button class="hamburger" id="hamburger-btn" aria-label="Menu">☰</button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="app-main">
+    <div class="page-header">
+      <div class="page-header-inner" style="justify-content: space-between;">
+        <div>
+          <h1 class="page-title">🏠 Cryptographic Workspace Dashboard</h1>
+          <p class="page-subtitle" style="margin-top: 6px;">Monitor local processing statistics, security activity, and cryptographic engine status.</p>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <span class="security-status verified">
+            <span class="dot"></span> SYSTEM HEALTHY
+          </span>
+          <button class="btn-secondary-lg" id="clear-history-btn" style="padding: 8px 14px; font-size: 12px; margin: 0;">✕ Clear History</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid" style="margin-bottom: 24px;">
+      <div class="stat-card">
+        <div class="stat-icon cyan">📁</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-total-processed">0</div>
+          <div class="stat-label">Total Files Processed</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">🔒</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-encrypted">0</div>
+          <div class="stat-label">Encrypted Packages</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon purple">✍️</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-signed">0</div>
+          <div class="stat-label">Digital Signatures</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon orange">🔍</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-verified">0</div>
+          <div class="stat-label">Packages Verified</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two-column dashboard -->
+    <div class="two-col-layout" style="margin-bottom: 24px;">
+      
+      <!-- LEFT: Recent Activity -->
+      <div class="col-left">
+        <div class="glass-card" style="min-height: 380px;">
+          <div class="glass-card-header">
+            <div class="card-title-row">
+              <span class="card-icon">📋</span>
+              <h2 class="card-title">Recent Security Activity</h2>
+            </div>
+          </div>
+          
+          <div style="padding: 16px 24px;">
+            <div class="table-wrapper">
+              <table style="width:100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                  <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase;">
+                    <th style="padding: 12px 8px;">Action</th>
+                    <th style="padding: 12px 8px;">File</th>
+                    <th style="padding: 12px 8px;">Status</th>
+                    <th style="padding: 12px 8px;">Time</th>
+                  </tr>
+                </thead>
+                <tbody id="activity-tbody">
+                  <!-- dynamically filled -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Engine Status -->
+      <div class="col-right">
+        <div class="glass-card" style="min-height: 380px;">
+          <div class="glass-card-header">
+            <div class="card-title-row">
+              <span class="card-icon">⚡</span>
+              <h2 class="card-title">Cryptographic Engines Status</h2>
+            </div>
+          </div>
+          
+          <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+            <!-- Engine 1 -->
+            <div class="toggle-label" style="pointer-events: none; margin: 0;">
+              <span style="font-size: 24px;">🔒</span>
+              <div style="flex: 1;">
+                <div class="option-title">AES-256-GCM Encryption Engine</div>
+                <div class="option-desc">Operational · In-memory symmetric cipher processing</div>
+              </div>
+              <span class="metric-badge green" style="align-self: center;">ONLINE</span>
+            </div>
+
+            <!-- Engine 2 -->
+            <div class="toggle-label" style="pointer-events: none; margin: 0;">
+              <span style="font-size: 24px;">🗝️</span>
+              <div style="flex: 1;">
+                <div class="option-title">RSA-2048 Asymmetric Engine</div>
+                <div class="option-desc">Operational · OAEP key wrapping &amp; keypair generation</div>
+              </div>
+              <span class="metric-badge green" style="align-self: center;">ONLINE</span>
+            </div>
+
+            <!-- Engine 3 -->
+            <div class="toggle-label" style="pointer-events: none; margin: 0;">
+              <span style="font-size: 24px;">✍️</span>
+              <div style="flex: 1;">
+                <div class="option-title">Signature &amp; Verification Module</div>
+                <div class="option-desc">Operational · RSA-SHA256 signature / hash verifier</div>
+              </div>
+              <span class="metric-badge green" style="align-self: center;">ONLINE</span>
+            </div>
+
+            <!-- Engine 4 -->
+            <div class="toggle-label" style="pointer-events: none; margin: 0;">
+              <span style="font-size: 24px;">🔑</span>
+              <div style="flex: 1;">
+                <div class="option-title">PBKDF2 Key Derivation Module</div>
+                <div class="option-desc">Operational · 310,000 iterations hash loop</div>
+              </div>
+              <span class="metric-badge green" style="align-self: center;">ONLINE</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="home-footer">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <span class="brand-icon">🔐</span> SECURE CRYPT
+        <span class="footer-tagline">— Hybrid Cryptography System</span>
+      </div>
+      <div class="footer-actions">
+        <a href="/encrypt.html" class="btn-footer">🔒 Secure File</a>
+        <a href="/verify.html" class="btn-footer btn-footer-outline">🔓 Open Package</a>
+      </div>
+      <div class="footer-meta">
+        © 2026 Secure Cloud Crypto · Capstone Project
+      </div>
+    </div>
+  </footer>
+
+  <div id="toast-container"></div>
+
+  <script src="/js/shared.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      loadStats();
+      loadActivity();
+
+      document.getElementById('clear-history-btn').addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear your local processing history and stats?')) {
+          clearLocalActivity();
+          loadStats();
+          loadActivity();
+          showToast('Local history cleared successfully.', 'info');
+        }
+      });
+    });
+
+    function loadStats() {
+      const stats = getLocalStats();
+      document.getElementById('stat-total-processed').textContent = stats.total || 0;
+      document.getElementById('stat-encrypted').textContent = stats.encrypted || 0;
+      document.getElementById('stat-signed').textContent = stats.signed || 0;
+      document.getElementById('stat-verified').textContent = stats.verified || 0;
+    }
+
+    function loadActivity() {
+      const tbody = document.getElementById('activity-tbody');
+      const history = getLocalActivity();
+
+      if (history.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 14px;">No recent operations recorded. Get started by securing or verifying a file!</td></tr>';
+        return;
+      }
+
+      const actions = {
+        'ENCRYPT': { label: 'ENCRYPT', badgeClass: 'cyan' },
+        'SIGN': { label: 'SIGN', badgeClass: 'purple' },
+        'VERIFY_SUCCESS': { label: 'VERIFIED OK', badgeClass: 'green' },
+        'VERIFY_FAILED': { label: 'VERIFY FAILED', badgeClass: 'red' }
+      };
+
+      tbody.innerHTML = history.map(item => {
+        const act = actions[item.action] || { label: item.action, badgeClass: 'muted' };
+        const timeFormatted = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' (' + new Date(item.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' }) + ')';
+        return `
+          <tr style="border-bottom: 1px solid var(--border-color); font-size: 13px; color: var(--text-secondary);">
+            <td style="padding: 14px 8px;"><span class="metric-badge ${act.badgeClass}">${act.label}</span></td>
+            <td style="padding: 14px 8px; font-weight: 600; color: var(--text-primary); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.filename}</td>
+            <td style="padding: 14px 8px;">${getStatusBadge(item.status)}</td>
+            <td style="padding: 14px 8px; color: var(--text-muted); font-size: 12px;">${timeFormatted}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getStatusBadge(status) {
+      if (status === 'success') return '<span style="color: var(--success); font-weight:600; display: inline-flex; align-items:center; gap:4px;">● Success</span>';
+      return '<span style="color: var(--danger); font-weight:600; display: inline-flex; align-items:center; gap:4px;">● Failed</span>';
+    }
+  </script>
+</body>
+</html>

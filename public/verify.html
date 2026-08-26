@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Decrypt .secure Package — Secure Cloud Hybrid Cryptography</title>
+  <title>Verify File Authenticity — Secure Crypt</title>
   <meta name="description" content="Upload a .secure package, verify its digital signature and SHA-256 integrity, enter passphrase to decrypt and download the original file.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,23 +12,31 @@
 </head>
 <body class="app-body">
 
-  <!-- Top Navigation -->
+  <!-- Navigation -->
   <nav class="app-nav">
     <a href="/" class="nav-brand">
       <span class="brand-icon">🔐</span>
-      <span class="brand-name">SECURE <span class="brand-accent">CLOUD</span></span>
+      <span class="brand-name">SECURE <span class="brand-accent">CRYPT</span></span>
     </a>
     <div class="app-nav-links">
-      <a href="/encrypt.html" class="app-nav-link" id="nav-encrypt">🔒 Encrypt</a>
-      <a href="/decrypt.html" class="app-nav-link active" id="nav-decrypt">🔓 Decrypt</a>
+      <a href="/" class="app-nav-link">Home</a>
+      <a href="/dashboard.html" class="app-nav-link">Dashboard</a>
+      <a href="/encrypt.html" class="app-nav-link">Secure File</a>
+      <a href="/verify.html" class="app-nav-link active">Verify</a>
+      <a href="/how-it-works.html" class="app-nav-link">How It Works</a>
+      <a href="/security.html" class="app-nav-link">Security</a>
     </div>
+    <div class="app-nav-cta">
+      <a href="/encrypt.html" class="btn-nav-cta">Get Started</a>
+    </div>
+    <button class="hamburger" id="hamburger-btn" aria-label="Menu">☰</button>
   </nav>
 
-  <!-- Main -->
+  <!-- Main Content -->
   <main class="app-main">
     <div class="page-header">
       <div class="page-header-inner">
-        <h1 class="page-title">🔓 Open Secure Package</h1>
+        <h1 class="page-title">🔓 Verify File Authenticity</h1>
         <span class="module-badge">MODULE 2 — VERIFICATION &amp; DECRYPTION</span>
       </div>
       <p class="page-subtitle">
@@ -205,14 +213,27 @@
     </div>
   </main>
 
+  <!-- Footer -->
+  <footer class="home-footer">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <span class="brand-icon">🔐</span> SECURE CRYPT
+        <span class="footer-tagline">— Hybrid Cryptography System</span>
+      </div>
+      <div class="footer-actions">
+        <a href="/encrypt.html" class="btn-footer">🔒 Secure File</a>
+        <a href="/verify.html" class="btn-footer btn-footer-outline">🔓 Open Package</a>
+      </div>
+      <div class="footer-meta">
+        © 2026 Secure Cloud Crypto · Capstone Project
+      </div>
+    </div>
+  </footer>
+
   <div id="toast-container"></div>
 
   <script src="/js/shared.js"></script>
   <script>
-    // ===================================================
-    // Decrypt Page Logic
-    // ===================================================
-
     let selectedPackage = null;
     let decryptedBlob = null;
     let decryptedFilename = '';
@@ -326,17 +347,20 @@
             setStep('ds-parse', 'error', '✗ INVALID');
             showStatusBanner('INVALID PACKAGE', 'error',
               errData.message || 'This file is not a valid .secure package.');
+            logLocalActivity(selectedPackage.name, 'VERIFY_FAILED', 'failure');
           } else if (errCode === 'INTEGRITY_FAILED') {
             setStep('ds-parse', 'done', '✓');
             setStep('ds-integrity', 'error', '✗ FAILED');
             showStatusBanner('TAMPERING DETECTED', 'error',
               errData.message || 'SHA-256 hash mismatch — the package has been tampered or corrupted.');
+            logLocalActivity(selectedPackage.name, 'VERIFY_FAILED', 'failure');
           } else if (errCode === 'SIGNATURE_INVALID') {
             setStep('ds-parse', 'done', '✓');
             setStep('ds-integrity', 'done', '✓ VERIFIED');
             setStep('ds-sig', 'error', '✗ INVALID');
             showStatusBanner('DIGITAL SIGNATURE INVALID', 'error',
               errData.message || 'Signature verification failed — authenticity cannot be confirmed.');
+            logLocalActivity(selectedPackage.name, 'VERIFY_FAILED', 'failure');
           } else if (errCode === 'DECRYPTION_FAILED') {
             setStep('ds-parse', 'done', '✓');
             setStep('ds-integrity', 'done', '✓ VERIFIED');
@@ -345,6 +369,7 @@
             setStep('ds-unwrap', 'error', '✗ FAILED');
             showStatusBanner('WRONG PASSPHRASE', 'error',
               'Decryption failed. The passphrase is incorrect or the package is corrupted.');
+            logLocalActivity(selectedPackage.name, 'VERIFY_FAILED', 'failure');
           } else {
             setStep('ds-parse', 'error', '✗');
             showStatusBanner('ERROR', 'error', errData.error || 'An unexpected error occurred.');
@@ -374,6 +399,7 @@
         });
 
         showDecryptResult(h);
+        logLocalActivity(decryptedFilename, 'VERIFY_SUCCESS', 'success');
         showToast('Decryption successful!', 'success');
       } catch (err) {
         setStep('ds-parse', 'error', '✗');

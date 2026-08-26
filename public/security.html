@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Parameters Overview — Secure Crypt</title>
+  <meta name="description" content="Technical specifications and algorithms used in Secure Crypt, including AES-256-GCM, RSA-2048-OAEP, and PBKDF2.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-body">
+
+  <!-- Navigation -->
+  <nav class="app-nav">
+    <a href="/" class="nav-brand">
+      <span class="brand-icon">🔐</span>
+      <span class="brand-name">SECURE <span class="brand-accent">CRYPT</span></span>
+    </a>
+    <div class="app-nav-links">
+      <a href="/" class="app-nav-link">Home</a>
+      <a href="/dashboard.html" class="app-nav-link">Dashboard</a>
+      <a href="/encrypt.html" class="app-nav-link">Secure File</a>
+      <a href="/verify.html" class="app-nav-link">Verify</a>
+      <a href="/how-it-works.html" class="app-nav-link">How It Works</a>
+      <a href="/security.html" class="app-nav-link active">Security</a>
+    </div>
+    <div class="app-nav-cta">
+      <a href="/encrypt.html" class="btn-nav-cta">Get Started</a>
+    </div>
+    <button class="hamburger" id="hamburger-btn" aria-label="Menu">☰</button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="app-main">
+    <div class="page-header">
+      <div class="page-header-inner">
+        <h1 class="page-title">🛡️ Cryptographic Security Overview</h1>
+        <span class="module-badge">STANDARDS &amp; PARAMETERS</span>
+      </div>
+      <p class="page-subtitle">
+        Explore the algorithms, key sizes, and design principles that protect your data within the application.
+      </p>
+    </div>
+
+    <!-- Security Grid -->
+    <div class="algo-grid" style="margin-bottom: 40px;">
+      
+      <!-- Card 1: AES-256-GCM -->
+      <div class="glass-card" style="padding: 24px;">
+        <div class="card-title-row" style="margin-bottom: 12px;">
+          <span style="font-size: 32px;">🔐</span>
+          <div>
+            <h3 style="font-size: 16px; font-weight: 700;">Symmetric File Encryption</h3>
+            <span class="metric-badge cyan" style="margin-top: 4px;">AES-256-GCM</span>
+          </div>
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+          Files are encrypted using Advanced Encryption Standard (AES) in Galois/Counter Mode (GCM) with a 256-bit key. AES-GCM provides both confidentiality and authenticated integrity check in a single pass.
+        </p>
+        <ul style="font-size: 12px; color: var(--text-muted); margin-top: 12px; margin-left: 16px; line-height: 1.6;">
+          <li>Key size: 256 bits</li>
+          <li>IV size: 96 bits (randomly generated)</li>
+          <li>Authentication tag: 128 bits (GCM Tag)</li>
+        </ul>
+      </div>
+
+      <!-- Card 2: RSA-2048-OAEP -->
+      <div class="glass-card" style="padding: 24px;">
+        <div class="card-title-row" style="margin-bottom: 12px;">
+          <span style="font-size: 32px;">🗝️</span>
+          <div>
+            <h3 style="font-size: 16px; font-weight: 700;">Asymmetric Key Protection</h3>
+            <span class="metric-badge purple" style="margin-top: 4px;">RSA-2048-OAEP</span>
+          </div>
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+          The AES session key is securely protected by wrapping it with RSA-2048 asymmetric encryption. Optimal Asymmetric Encryption Padding (OAEP) with SHA-256 prevents chosen-ciphertext attacks.
+        </p>
+        <ul style="font-size: 12px; color: var(--text-muted); margin-top: 12px; margin-left: 16px; line-height: 1.6;">
+          <li>Key size: 2048 bits</li>
+          <li>Padding: PKCS#1 OAEP</li>
+          <li>Hashing function: SHA-256</li>
+        </ul>
+      </div>
+
+      <!-- Card 3: PBKDF2-SHA256 -->
+      <div class="glass-card" style="padding: 24px;">
+        <div class="card-title-row" style="margin-bottom: 12px;">
+          <span style="font-size: 32px;">🔑</span>
+          <div>
+            <h3 style="font-size: 16px; font-weight: 700;">Key Derivation Engine</h3>
+            <span class="metric-badge orange" style="margin-top: 4px;">PBKDF2-SHA256</span>
+          </div>
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+          Passphrases are transformed into secure cryptographic keys using Password-Based Key Derivation Function 2 (PBKDF2). This mitigates offline brute-force attacks by increasing computational cost.
+        </p>
+        <ul style="font-size: 12px; color: var(--text-muted); margin-top: 12px; margin-left: 16px; line-height: 1.6;">
+          <li>Iterations: 310,000</li>
+          <li>Salt length: 128 bits (16 bytes)</li>
+          <li>Internal Hash: SHA-256</li>
+        </ul>
+      </div>
+
+      <!-- Card 4: Digital Signatures -->
+      <div class="glass-card" style="padding: 24px;">
+        <div class="card-title-row" style="margin-bottom: 12px;">
+          <span style="font-size: 32px;">✍️</span>
+          <div>
+            <h3 style="font-size: 16px; font-weight: 700;">Digital Signature Authenticity</h3>
+            <span class="metric-badge green" style="margin-top: 4px;">RSA-SHA256</span>
+          </div>
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+          Provides non-repudiation and sender authenticity. If signature generation is selected, the hash of the ciphertext is signed using the sender's ephemeral RSA private key.
+        </p>
+        <ul style="font-size: 12px; color: var(--text-muted); margin-top: 12px; margin-left: 16px; line-height: 1.6;">
+          <li>Verification key: RSA Public Key (embedded)</li>
+          <li>Signature format: Hex string</li>
+          <li>Standard: PKCS#1 v1.5</li>
+        </ul>
+      </div>
+
+      <!-- Card 5: SHA-256 Integrity -->
+      <div class="glass-card" style="padding: 24px;">
+        <div class="card-title-row" style="margin-bottom: 12px;">
+          <span style="font-size: 32px;">🔍</span>
+          <div>
+            <h3 style="font-size: 16px; font-weight: 700;">Data Integrity Validation</h3>
+            <span class="metric-badge cyan" style="margin-top: 4px;">SHA-256</span>
+          </div>
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+          Protects the package ciphertext from silent data corruption or intentional tampering. The hash is compared dynamically during decryption; any modification stops the process immediately.
+        </p>
+        <ul style="font-size: 12px; color: var(--text-muted); margin-top: 12px; margin-left: 16px; line-height: 1.6;">
+          <li>Hash length: 256 bits (32 bytes)</li>
+          <li>Output: 64 hexadecimal characters</li>
+          <li>Collision-resistant design</li>
+        </ul>
+      </div>
+
+      <!-- Card 6: Zero Storage -->
+      <div class="glass-card" style="padding: 24px;">
+        <div class="card-title-row" style="margin-bottom: 12px;">
+          <span style="font-size: 32px;">🛡️</span>
+          <div>
+            <h3 style="font-size: 16px; font-weight: 700;">Zero Storage &amp; Privacy</h3>
+            <span class="metric-badge muted" style="margin-top: 4px;">Stateless Architecture</span>
+          </div>
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+          The system retains absolutely no persistent record of files, decryption passwords, or keypairs on disk. The operation is in-memory only and immediately garbage-collected once streamed.
+        </p>
+        <ul style="font-size: 12px; color: var(--text-muted); margin-top: 12px; margin-left: 16px; line-height: 1.6;">
+          <li>Session state: None</li>
+          <li>File retention period: 0 seconds</li>
+          <li>No tracking database</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- Security Assurance Box -->
+    <div class="glass-card" style="padding: 32px; text-align: center; border-color: rgba(0, 230, 118, 0.2); background: rgba(0, 230, 118, 0.02);">
+      <div style="font-size: 40px; margin-bottom: 12px;">🛡️</div>
+      <h3 style="font-size: 20px; font-weight: 800; color: var(--success); margin-bottom: 8px;">Zero-Trust Encryption</h3>
+      <p style="font-size: 14px; color: var(--text-secondary); max-width: 680px; margin: 0 auto; line-height: 1.6;">
+        Your files are only as secure as your password. Because the application does not store your passphrase, it is impossible for administrators, hosting providers, or adversaries to decrypt your files without access to your passphrase. Always share passphrases through an out-of-band, secure communication channel (such as an encrypted messaging app).
+      </p>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="home-footer">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <span class="brand-icon">🔐</span> SECURE CRYPT
+        <span class="footer-tagline">— Hybrid Cryptography System</span>
+      </div>
+      <div class="footer-actions">
+        <a href="/encrypt.html" class="btn-footer">🔒 Secure File</a>
+        <a href="/verify.html" class="btn-footer btn-footer-outline">🔓 Open Package</a>
+      </div>
+      <div class="footer-meta">
+        © 2026 Secure Cloud Crypto · Capstone Project
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/shared.js"></script>
+</body>
+</html>

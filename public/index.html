@@ -13,19 +13,23 @@
 <body class="home-body">
 
   <!-- Navigation -->
-  <nav class="home-nav">
-    <div class="nav-brand">
+  <nav class="app-nav">
+    <a href="/" class="nav-brand">
       <span class="brand-icon">🔐</span>
-      <span class="brand-name">SECURE <span class="brand-accent">CLOUD</span></span>
+      <span class="brand-name">SECURE <span class="brand-accent">CRYPT</span></span>
+    </a>
+    <div class="app-nav-links">
+      <a href="/" class="app-nav-link active">Home</a>
+      <a href="/dashboard.html" class="app-nav-link">Dashboard</a>
+      <a href="/encrypt.html" class="app-nav-link">Secure File</a>
+      <a href="/verify.html" class="app-nav-link">Verify</a>
+      <a href="/how-it-works.html" class="app-nav-link">How It Works</a>
+      <a href="/security.html" class="app-nav-link">Security</a>
     </div>
-    <div class="nav-links">
-      <a href="/encrypt.html" class="nav-link">Encrypt</a>
-      <a href="/decrypt.html" class="nav-link">Decrypt</a>
-      <a href="#how-it-works" class="nav-link">How It Works</a>
+    <div class="app-nav-cta">
+      <a href="/encrypt.html" class="btn-nav-cta">Get Started</a>
     </div>
-    <div class="nav-actions">
-      <a href="/encrypt.html" class="btn-nav-cta">Start Encrypting →</a>
-    </div>
+    <button class="hamburger" id="hamburger-btn" aria-label="Menu">☰</button>
   </nav>
 
   <!-- Hero Section -->
@@ -43,26 +47,25 @@
       </div>
 
       <h1 class="hero-title">
-        Military-Grade<br>
-        <span class="title-gradient">File Encryption</span><br>
-        in Your Browser
+        Secure Your Files.<br>
+        <span class="title-gradient">Encrypt. Sign. Verify.</span>
       </h1>
 
       <p class="hero-description">
-        Encrypt any file with <strong>AES-256-GCM</strong> symmetric encryption,
-        protect the key with <strong>RSA-2048-OAEP</strong>, generate a
-        <strong>SHA-256</strong> integrity hash and an <strong>RSA-SHA256</strong>
-        digital signature — all processed server-side in memory.
-        <em>No file is ever stored. No account required.</em>
+        Protect sensitive files with strong encryption and digital signatures before sharing them anywhere. Processed securely in-memory with zero disk persistence.
       </p>
 
       <div class="hero-actions">
         <a href="/encrypt.html" class="btn-hero-primary" id="hero-encrypt-btn">
-          <span>🔒</span> Encrypt a File
+          <span>🔒</span> Secure a File
         </a>
-        <a href="/decrypt.html" class="btn-hero-secondary" id="hero-decrypt-btn">
-          <span>🔓</span> Decrypt a Package
+        <a href="/how-it-works.html" class="btn-hero-secondary" id="hero-decrypt-btn">
+          <span>⚙️</span> How It Works
         </a>
+      </div>
+
+      <div class="trust-badge" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--success); font-weight: 600; margin-top: 16px;">
+        <span>🛡️</span> Your files are processed securely
       </div>
 
       <div class="hero-stats">
@@ -321,15 +324,15 @@
   <footer class="home-footer">
     <div class="footer-content">
       <div class="footer-brand">
-        <span class="brand-icon">🔐</span> SECURE CLOUD
-        <span class="footer-tagline">— Hybrid Cryptography System</span>
+        <span class="brand-icon">🔐</span> SECURE CRYPT
+        <span class="footer-tagline">— Protect your files before you share them.</span>
       </div>
       <div class="footer-actions">
-        <a href="/encrypt.html" class="btn-footer" id="footer-encrypt-btn">🔒 Encrypt File</a>
-        <a href="/decrypt.html" class="btn-footer btn-footer-outline" id="footer-decrypt-btn">🔓 Open .secure Package</a>
+        <a href="/encrypt.html" class="btn-footer" id="footer-encrypt-btn">🔒 Secure File</a>
+        <a href="/verify.html" class="btn-footer btn-footer-outline" id="footer-decrypt-btn">🔓 Open .secure Package</a>
       </div>
       <div class="footer-meta">
-        Capstone Project · Cryptography &amp; Network Security · AES-256-GCM + RSA-2048-OAEP
+        © 2026 Secure Cloud Crypto · Capstone Project
       </div>
     </div>
   </footer>
