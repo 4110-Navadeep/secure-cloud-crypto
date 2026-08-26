@@ -137,35 +137,42 @@ app.use((err, req, res, next) => {
 // ---------------------------------------------------------------------------
 async function start() {
   try {
-    // Validate required env vars
+    // -----------------------------------------------------------------------
+    // PORT separation:
+    //   process.env.PORT    → Express web server (provided by Render)
+    //   process.env.DB_PORT → MySQL database port (default 3306)
+    //   THESE MUST NEVER BE MIXED.
+    // -----------------------------------------------------------------------
+    const EXPRESS_PORT = Number(process.env.PORT || 5000);
+
+    // Validate required env vars. DB_PORT is optional (defaults to 3306 in db.js).
     const requiredVars = [
-      { name: 'JWT_SECRET', val: config.jwt.secret },
-      { name: 'APPLICATION_SECRET', val: config.app.secret },
-      { name: 'DB_HOST', val: config.db.host },
-      { name: 'DB_PORT', val: config.db.port },
-      { name: 'DB_USER', val: config.db.user },
-      { name: 'DB_PASSWORD', val: config.db.password },
-      { name: 'DB_NAME', val: config.db.database },
+      { name: 'JWT_SECRET',          val: config.jwt.secret },
+      { name: 'APPLICATION_SECRET',  val: config.app.secret },
+      { name: 'DB_HOST',             val: config.db.host },
+      { name: 'DB_USER',             val: config.db.user },
+      { name: 'DB_PASSWORD',         val: config.db.password },
+      { name: 'DB_NAME',             val: config.db.database },
     ];
 
     for (const v of requiredVars) {
-      if (v.val === undefined || v.val === null || String(v.val).trim() === '') {
+      if (!v.val && v.val !== 0) {
         console.error(`[SERVER] Missing required environment variable: ${v.name}`);
         process.exit(1);
       }
     }
 
-    console.log('[DATABASE] Connecting to configured MySQL server...');
-    // Test DB connection
+    const dbPort = Number(process.env.DB_PORT || 3306);
+    console.log(`[DATABASE] Connecting to configured MySQL server at ${config.db.host}:${dbPort} ...`);
+
     await testConnection();
     console.log('[DATABASE] MySQL connection successful.');
 
-    // Run migrations
     await runMigrations();
 
-    const PORT = config.app.port;
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`[SERVER] Application started successfully. Listening on http://0.0.0.0:${PORT}`);
+    // Express listens on process.env.PORT (provided by Render), NOT on DB_PORT
+    app.listen(EXPRESS_PORT, '0.0.0.0', () => {
+      console.log(`[SERVER] Application started successfully. Listening on http://0.0.0.0:${EXPRESS_PORT}`);
       console.log(`[SERVER] Environment: ${config.app.nodeEnv}`);
     });
   } catch (err) {
