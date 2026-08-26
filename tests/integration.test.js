@@ -1,286 +1,154 @@
 'use strict';
 /**
- * Rigorous Integration Test Suite
- * Verifies all 17 requirements of database-free JSON persistence layer
+ * Rigorous Integration Test Suite for Stateless Hybrid Cryptography Architecture
+ * Verifies stateless encrypt and decrypt endpoints.
  */
-
-process.env.APPLICATION_SECRET = 'super-secret-key-for-testing-only-12345';
-process.env.JWT_SECRET = 'jwt-secret-key-for-testing-only-12345';
 
 const request = require('supertest');
 const fs = require('fs');
 const path = require('path');
-const db = require('../server/database/db');
 const app = require('../server/server');
 
-describe('End-to-End JSON Integration & Sharing Pipeline', () => {
-  let adminToken = '';
-  let memberToken = '';
-  let memberEmail = 'bob@securecloud.app';
-  let invitationToken = '';
-  let uploadedFileId = '';
-  let passphrase = 'secure-file-passphrase';
+describe('Stateless Cryptography API End-to-End Pipeline', () => {
+  const originalPayload = 'This is a capstone project payload for secure cloud file sharing using hybrid cryptography.';
+  const passphrase = 'correct-passphrase-123';
+  let securePackageBuffer = null;
 
-  beforeAll(() => {
-    // 1. Reset database to fresh clean state
-    db.users.saveAll([]);
-    db.members.saveAll([]);
-    db.files.saveAll([]);
-    db.shares.saveAll([]);
-    db.access.saveAll([]);
-    db.securityLogs.saveAll([]);
-    db.performance.saveAll([]);
-
-    // Ensure storage folders exist
-    const storageDir = path.join(__dirname, '..', 'storage');
-    if (!fs.existsSync(storageDir)) {
-      fs.mkdirSync(storageDir, { recursive: true });
-    }
-  });
-
-  afterAll((done) => {
-    // Reset databases at the end to keep repository clean
-    db.users.saveAll([]);
-    db.members.saveAll([]);
-    db.files.saveAll([]);
-    db.shares.saveAll([]);
-    db.access.saveAll([]);
-    db.securityLogs.saveAll([]);
-    db.performance.saveAll([]);
-
-    // Clean up local S3 cloud simulator files
-    const simDir = path.join(__dirname, '..', 'storage', 'cloud_sim');
-    if (fs.existsSync(simDir)) {
-      fs.readdirSync(simDir).forEach(file => {
-        fs.unlinkSync(path.join(simDir, file));
-      });
-    }
-
-    done();
-  });
-
-  // Checklist 1 & 2: Server starts without MySQL & Admin account can be created
-  test('1. Admin setup works (create the first administrator)', async () => {
-    const res = await request(app)
-      .post('/api/auth/setup')
-      .send({
-        full_name: 'Super Admin',
-        email: 'admin@securecloud.app',
-        password: 'AdminPassword123!',
-        confirm_password: 'AdminPassword123!'
-      });
-
-    expect(res.status).toBe(201);
-    expect(res.body.message).toContain('Administrator account created successfully');
-
-    // Setup is now disabled
-    const res2 = await request(app)
-      .post('/api/auth/setup')
-      .send({
-        full_name: 'Second Admin',
-        email: 'admin2@securecloud.app',
-        password: 'AdminPassword123!',
-        confirm_password: 'AdminPassword123!'
-      });
-    expect(res2.status).toBe(403);
-  });
-
-  test('2. Admin login works', async () => {
-    const res = await request(app)
-      .post('/api/auth/login')
-      .send({
-        email: 'admin@securecloud.app',
-        password: 'AdminPassword123!'
-      });
-
+  test('1. Server health check works', async () => {
+    const res = await request(app).get('/health');
     expect(res.status).toBe(200);
-    expect(res.body.token).toBeDefined();
-    adminToken = res.body.token;
+    expect(res.body.status).toBe('ok');
+    expect(res.body.storage).toContain('stateless');
   });
 
-  // Checklist 3: Admin can invite a member
-  test('3. Admin can invite a member', async () => {
+  test('2. Encrypt endpoint accepts a file and returns a .secure package', async () => {
     const res = await request(app)
-      .post('/api/members/invite')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({
-        full_name: 'Bob Member',
-        email: memberEmail,
-        role: 'member'
-      });
-
-    expect(res.status).toBe(201);
-    expect(res.body.invitation).toBeDefined();
-    expect(res.body.invitation.email).toBe(memberEmail);
-
-    // Get the invitation token from storage
-    const invite = db.members.findOne({ email: memberEmail });
-    expect(invite).toBeDefined();
-    invitationToken = invite.token;
-  });
-
-  test('4. Validate invitation token works', async () => {
-    const res = await request(app)
-      .get(`/api/members/invitations/${invitationToken}`);
-
-    expect(res.status).toBe(200);
-    expect(res.body.invitation.email).toBe(memberEmail);
-  });
-
-  test('5. Sign up using invitation token', async () => {
-    const res = await request(app)
-      .post('/api/members/register')
-      .send({
-        token: invitationToken,
-        password: 'BobPassword123!',
-        confirm_password: 'BobPassword123!'
-      });
-
-    expect(res.status).toBe(201);
-    expect(res.body.message).toContain('Account created successfully');
-  });
-
-  // Checklist 4: User/member can log in
-  test('6. Member can log in', async () => {
-    const res = await request(app)
-      .post('/api/auth/login')
-      .send({
-        email: memberEmail,
-        password: 'BobPassword123!'
-      });
-
-    expect(res.status).toBe(200);
-    expect(res.body.token).toBeDefined();
-    memberToken = res.body.token;
-  });
-
-  // Checklist 5, 6, 7 & 11: File can be uploaded, encrypted, downloaded
-  test('7. Member can upload and encrypt a file', async () => {
-    const fileContent = 'This is a secure payload representing client data.';
-    const res = await request(app)
-      .post('/api/files/upload')
-      .set('Authorization', `Bearer ${memberToken}`)
+      .post('/api/crypto/encrypt')
       .field('passphrase', passphrase)
-      .attach('file', Buffer.from(fileContent, 'utf-8'), 'payload.txt');
-
-    expect(res.status).toBe(201);
-    expect(res.body.file).toBeDefined();
-    expect(res.body.file.original_filename).toBe('payload.txt');
-    uploadedFileId = res.body.file.id;
-
-    // Verify S3 cloud simulator wrote encrypted file to disk
-    const encPath = path.join(__dirname, '..', 'storage', 'cloud_sim', `${uploadedFileId}.enc`);
-    expect(fs.existsSync(encPath)).toBe(true);
-
-    // Verify it is encrypted (not containing the plaintext string)
-    const storedEncryptedContent = fs.readFileSync(encPath, 'utf8');
-    expect(storedEncryptedContent).not.toContain(fileContent);
-  });
-
-  test('8. Owner can download and decrypt the original file successfully', async () => {
-    const res = await request(app)
-      .get(`/api/files/${uploadedFileId}/download-original`)
-      .set('Authorization', `Bearer ${memberToken}`);
+      .field('signatureEnabled', 'true')
+      .attach('file', Buffer.from(originalPayload, 'utf-8'), 'sample_document.pdf');
 
     expect(res.status).toBe(200);
-    expect(res.text).toBe('This is a secure payload representing client data.');
+    expect(res.header['content-type']).toBe('application/octet-stream');
+    expect(res.header['content-disposition']).toContain('attachment');
+    expect(res.header['content-disposition']).toContain('.secure');
+    expect(res.header['x-original-filename']).toBe('sample_document.pdf');
+    expect(res.header['x-signature-status']).toBe('SIGNED');
+    expect(res.header['x-sha256-hash']).toBeDefined();
+
+    securePackageBuffer = res.body; // Supertest parses binary response as a Buffer
+    expect(securePackageBuffer).toBeDefined();
+    expect(securePackageBuffer.length).toBeGreaterThan(0);
+
+    // Validate that it parses as JSON and contains the ciphertext and metadata
+    const envelope = JSON.parse(securePackageBuffer.toString('utf8'));
+    expect(envelope.version).toBe(2);
+    expect(envelope.algorithm).toBe('AES-256-GCM');
+    expect(envelope.keyProtection).toBe('PASSPHRASE-PBKDF2-310000');
+    expect(envelope.originalFilename).toBe('sample_document.pdf');
+    expect(envelope.ciphertextBase64).toBeDefined();
+    expect(envelope.signatureEnabled).toBe(true);
+    expect(envelope.signature).toBeDefined();
+    expect(envelope.signerPublicKey).toBeDefined();
   });
 
-  // Checklist 8 & 9: Share file and recipient sees it
-  test('9. Share the file with the Admin', async () => {
-    const res = await request(app)
-      .post('/api/sharing/')
-      .set('Authorization', `Bearer ${memberToken}`)
-      .send({
-        file_id: uploadedFileId,
-        shared_with_email: 'admin@securecloud.app',
-        permission: 'download'
-      });
+  test('3. Decrypt endpoint recovers the original file with correct passphrase', async () => {
+    expect(securePackageBuffer).toBeDefined();
 
-    expect(res.status).toBe(201);
-    expect(res.body.message).toContain('File shared with');
-  });
-
-  test('10. Recipient (Admin) can see the shared file', async () => {
     const res = await request(app)
-      .get('/api/sharing/with-me')
-      .set('Authorization', `Bearer ${adminToken}`);
+      .post('/api/crypto/decrypt')
+      .field('passphrase', passphrase)
+      .attach('package', securePackageBuffer, 'sample_document.secure');
 
     expect(res.status).toBe(200);
-    expect(res.body.shares.length).toBeGreaterThan(0);
-    expect(res.body.shares[0].file_id).toBe(uploadedFileId);
+    expect(res.header['content-type']).toBe('application/pdf'); // inferred from original mimetype
+    expect(res.header['content-disposition']).toContain('filename="sample_document.pdf"');
+    expect(res.header['x-integrity-ok']).toBe('true');
+    expect(res.header['x-signature-ok']).toBe('true');
+    expect(res.body.toString('utf8')).toBe(originalPayload);
   });
 
-  // Checklist 10: Unauthorized user cannot access it
-  test('11. Unauthorized user (guest or non-shared) cannot download the file', async () => {
-    // Create another member to test unauthorized access
-    db.users.insert({
-      id: 'hacker-uuid',
-      full_name: 'Intruder',
-      email: 'intruder@hacker.com',
-      password_hash: 'somehash',
-      role: 'member',
-      status: 'active'
-    });
-
-    const intruderToken = require('jsonwebtoken').sign(
-      { id: 'hacker-uuid', email: 'intruder@hacker.com', role: 'member' },
-      process.env.JWT_SECRET
-    );
-
+  test('4. Encrypt endpoint validation errors (short passphrase)', async () => {
     const res = await request(app)
-      .get(`/api/files/${uploadedFileId}/download-original`)
-      .set('Authorization', `Bearer ${intruderToken}`);
+      .post('/api/crypto/encrypt')
+      .field('passphrase', '123') // too short
+      .attach('file', Buffer.from(originalPayload, 'utf-8'), 'sample_document.pdf');
 
-    expect(res.status).toBe(403);
-    expect(res.body.error).toContain('Access denied');
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Passphrase must be at least 6 characters');
   });
 
-  // Checklist 12: Integrity verification detects modification
-  test('12. Integrity check fails if encrypted file is tampered', async () => {
-    const encPath = path.join(__dirname, '..', 'storage', 'cloud_sim', `${uploadedFileId}.enc`);
-    
-    // Backup encrypted content
-    const originalEncData = fs.readFileSync(encPath);
+  test('5. Encrypt endpoint validation errors (missing file)', async () => {
+    const res = await request(app)
+      .post('/api/crypto/encrypt')
+      .field('passphrase', passphrase);
 
-    // Tamper the file contents
-    fs.writeFileSync(encPath, Buffer.from('tampered payload data', 'utf-8'));
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('No file provided');
+  });
+
+  test('6. Decrypt endpoint fails with wrong passphrase', async () => {
+    const res = await request(app)
+      .post('/api/crypto/decrypt')
+      .field('passphrase', 'wrong-passphrase')
+      .attach('package', securePackageBuffer, 'sample_document.secure');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('DECRYPTION_FAILED');
+    expect(res.body.message).toContain('Decryption failed. The passphrase is incorrect');
+  });
+
+  test('7. Decrypt endpoint detects package tampering (integrity check)', async () => {
+    // Parse package envelope, tamper the ciphertext, and re-serialize
+    const envelope = JSON.parse(securePackageBuffer.toString('utf8'));
+    envelope.ciphertextBase64 = Buffer.from('tampered payload data', 'utf-8').toString('base64');
+    const tamperedBuffer = Buffer.from(JSON.stringify(envelope), 'utf8');
 
     const res = await request(app)
-      .get(`/api/files/${uploadedFileId}/download-original`)
-      .set('Authorization', `Bearer ${memberToken}`);
+      .post('/api/crypto/decrypt')
+      .field('passphrase', passphrase)
+      .attach('package', tamperedBuffer, 'sample_document.secure');
 
     expect(res.status).toBe(409);
-    expect(res.body.error).toContain('File integrity check failed');
-
-    // Restore original file content
-    fs.writeFileSync(encPath, originalEncData);
+    expect(res.body.error).toBe('INTEGRITY_FAILED');
+    expect(res.body.message).toContain('FILE INTEGRITY CHECK FAILED');
   });
 
-  // Checklist 15: Revoked access prevents access
-  test('13. Revoking access prevents recipient download', async () => {
-    const adminUser = db.users.findOne({ email: 'admin@securecloud.app' });
-    const share = db.shares.findOne({ file_id: uploadedFileId, shared_with: adminUser.id });
-    expect(share).toBeDefined();
+  test('8. Decrypt endpoint detects signature invalidation', async () => {
+    // Parse package envelope, change the signature, and re-serialize
+    const envelope = JSON.parse(securePackageBuffer.toString('utf8'));
+    // Modify signature slightly
+    envelope.signature = envelope.signature.replace(/[a-f0-9]/, '0');
+    const tamperedBuffer = Buffer.from(JSON.stringify(envelope), 'utf8');
 
-    const resRevoke = await request(app)
-      .patch(`/api/sharing/${share.id}/revoke`)
-      .set('Authorization', `Bearer ${memberToken}`);
+    const res = await request(app)
+      .post('/api/crypto/decrypt')
+      .field('passphrase', passphrase)
+      .attach('package', tamperedBuffer, 'sample_document.secure');
 
-    expect(resRevoke.status).toBe(200);
-
-    const resDown = await request(app)
-      .get(`/api/files/${uploadedFileId}/download-original`)
-      .set('Authorization', `Bearer ${adminToken}`);
-
-    expect(resDown.status).toBe(403);
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('SIGNATURE_INVALID');
+    expect(res.body.message).toContain('DIGITAL SIGNATURE INVALID');
   });
 
-  // Checklist 16: Security activity is logged
-  test('14. Security events are stored in audit logs', async () => {
-    const logs = db.securityLogs.find();
-    expect(logs.length).toBeGreaterThan(0);
-    const downloadDeniedLog = logs.find(l => l.event_type === 'ACCESS_DENIED');
-    expect(downloadDeniedLog).toBeDefined();
+  test('9. Decrypt endpoint handles unsigned packages correctly', async () => {
+    // Create an unsigned package
+    const resEncrypt = await request(app)
+      .post('/api/crypto/encrypt')
+      .field('passphrase', passphrase)
+      .field('signatureEnabled', 'false')
+      .attach('file', Buffer.from(originalPayload, 'utf-8'), 'sample_document.pdf');
+
+    expect(resEncrypt.status).toBe(200);
+    const unsignedBuffer = resEncrypt.body;
+
+    const resDecrypt = await request(app)
+      .post('/api/crypto/decrypt')
+      .field('passphrase', passphrase)
+      .attach('package', unsignedBuffer, 'sample_document.secure');
+
+    expect(resDecrypt.status).toBe(200);
+    expect(resDecrypt.header['x-signature-ok']).toBe('N/A');
+    expect(resDecrypt.body.toString('utf8')).toBe(originalPayload);
   });
 });

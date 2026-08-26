@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Decrypt .secure Package — Secure Cloud Hybrid Cryptography</title>
+  <meta name="description" content="Upload a .secure package, verify its digital signature and SHA-256 integrity, enter passphrase to decrypt and download the original file.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-body">
+
+  <!-- Top Navigation -->
+  <nav class="app-nav">
+    <a href="/" class="nav-brand">
+      <span class="brand-icon">🔐</span>
+      <span class="brand-name">SECURE <span class="brand-accent">CLOUD</span></span>
+    </a>
+    <div class="app-nav-links">
+      <a href="/encrypt.html" class="app-nav-link" id="nav-encrypt">🔒 Encrypt</a>
+      <a href="/decrypt.html" class="app-nav-link active" id="nav-decrypt">🔓 Decrypt</a>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="app-main">
+    <div class="page-header">
+      <div class="page-header-inner">
+        <h1 class="page-title">🔓 Open Secure Package</h1>
+        <span class="module-badge">MODULE 2 — VERIFICATION &amp; DECRYPTION</span>
+      </div>
+      <p class="page-subtitle">
+        Upload a <code>.secure</code> package. The system will verify its <strong>SHA-256 integrity hash</strong>
+        and <strong>RSA-SHA256 digital signature</strong>, then decrypt the file using your passphrase.
+      </p>
+    </div>
+
+    <div class="two-col-layout">
+      <!-- LEFT: Upload + Passphrase -->
+      <div class="col-left">
+        <div class="glass-card">
+          <div class="glass-card-header">
+            <div class="card-title-row">
+              <span class="card-icon">📦</span>
+              <h2 class="card-title">Upload .secure Package</h2>
+            </div>
+          </div>
+
+          <div class="upload-zone" id="pkg-upload-zone" tabindex="0" role="button" aria-label="Upload .secure package">
+            <div class="upload-zone-inner">
+              <div class="upload-zone-icon">📦</div>
+              <div class="upload-zone-title">Drop your <span class="mono">.secure</span> package here</div>
+              <div class="upload-zone-hint">or <span class="upload-browse-link">click to browse</span> — received via email, WhatsApp, USB, etc.</div>
+            </div>
+            <input type="file" id="pkg-file-input" accept=".secure,*/*" aria-label="Choose .secure package">
+          </div>
+
+          <!-- Package Info -->
+          <div id="pkg-file-info" class="file-info-bar hidden">
+            <span class="file-icon-lg">📦</span>
+            <div class="file-info-text">
+              <div class="file-info-name" id="pkg-name-display">—</div>
+              <div class="file-info-meta" id="pkg-size-display">—</div>
+            </div>
+            <button class="file-clear-btn" id="clear-pkg-btn" title="Remove package">✕</button>
+          </div>
+
+          <!-- Passphrase Input -->
+          <div class="form-field" id="passphrase-section">
+            <label class="field-label" for="pkg-passphrase">
+              Decryption Passphrase <span class="required-star">*</span>
+            </label>
+            <div class="field-input-wrap">
+              <input type="password" class="field-input" id="pkg-passphrase"
+                placeholder="Enter passphrase used during encryption" autocomplete="current-password">
+              <button class="toggle-pw-btn" id="toggle-pkg-pw" type="button" aria-label="Toggle password visibility">👁</button>
+            </div>
+            <div class="field-hint">
+              This is the passphrase that was used when the .secure package was created.
+            </div>
+          </div>
+
+          <!-- Decrypt Button -->
+          <button class="btn-decrypt-lg w-full" id="decrypt-btn" disabled>
+            <span id="decrypt-btn-text">🛡️ Verify &amp; Decrypt Package</span>
+            <div id="decrypt-spinner" class="btn-spinner hidden"></div>
+          </button>
+
+          <div class="two-step-note">
+            <div class="two-step-icon">🔄</div>
+            <div>
+              <strong>Two-Phase Process:</strong> First the package is verified for integrity and authenticity.
+              Then the file is decrypted using your passphrase.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Verification + Result -->
+      <div class="col-right">
+        <!-- Verification Steps Card -->
+        <div class="glass-card" id="verify-card">
+          <div class="glass-card-header">
+            <div class="card-title-row">
+              <span class="card-icon">🛡️</span>
+              <h2 class="card-title">Verification &amp; Decryption</h2>
+            </div>
+          </div>
+
+          <div class="process-steps" id="decrypt-steps">
+            <div class="process-step" id="ds-parse">
+              <div class="ps-icon">📦</div>
+              <div class="ps-info">
+                <div class="ps-title">PACKAGE PARSED</div>
+                <div class="ps-sub">Validate .secure envelope structure</div>
+              </div>
+              <div class="ps-status" id="ds-parse-status">—</div>
+            </div>
+            <div class="ps-connector"></div>
+
+            <div class="process-step" id="ds-integrity">
+              <div class="ps-icon">🔍</div>
+              <div class="ps-info">
+                <div class="ps-title">SHA-256 INTEGRITY CHECK</div>
+                <div class="ps-sub">Recompute hash and compare</div>
+              </div>
+              <div class="ps-status" id="ds-integrity-status">—</div>
+            </div>
+            <div class="ps-connector"></div>
+
+            <div class="process-step" id="ds-sig">
+              <div class="ps-icon">✍️</div>
+              <div class="ps-info">
+                <div class="ps-title">DIGITAL SIGNATURE VERIFICATION</div>
+                <div class="ps-sub">RSA-SHA256 signature check</div>
+              </div>
+              <div class="ps-status" id="ds-sig-status">—</div>
+            </div>
+            <div class="ps-connector"></div>
+
+            <div class="process-step" id="ds-pbkdf2">
+              <div class="ps-icon">🔑</div>
+              <div class="ps-info">
+                <div class="ps-title">PBKDF2 KEY DERIVATION</div>
+                <div class="ps-sub">Derive AES unwrapping key from passphrase</div>
+              </div>
+              <div class="ps-status" id="ds-pbkdf2-status">—</div>
+            </div>
+            <div class="ps-connector"></div>
+
+            <div class="process-step" id="ds-unwrap">
+              <div class="ps-icon">🗝️</div>
+              <div class="ps-info">
+                <div class="ps-title">AES KEY UNWRAPPED</div>
+                <div class="ps-sub">Recover original AES-256 session key</div>
+              </div>
+              <div class="ps-status" id="ds-unwrap-status">—</div>
+            </div>
+            <div class="ps-connector"></div>
+
+            <div class="process-step" id="ds-decrypt">
+              <div class="ps-icon">🔓</div>
+              <div class="ps-info">
+                <div class="ps-title">AES-256-GCM DECRYPTION</div>
+                <div class="ps-sub">Decrypt file with authenticated cipher</div>
+              </div>
+              <div class="ps-status" id="ds-decrypt-status">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status Banner / Result -->
+        <div class="glass-card hidden" id="status-card">
+          <!-- Filled dynamically -->
+        </div>
+
+        <!-- Download Result -->
+        <div class="glass-card hidden" id="download-card">
+          <div class="result-header">
+            <div class="result-success-banner">
+              <span class="result-success-icon">✅</span>
+              <div>
+                <div class="result-success-title">Decryption Successful</div>
+                <div class="result-success-sub" id="decrypt-timing">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="result-metrics" id="decrypt-metrics">
+            <!-- filled dynamically -->
+          </div>
+
+          <div class="result-actions">
+            <button class="btn-primary-lg" id="download-decrypted-btn">
+              ⬇️ Download Decrypted File
+            </button>
+            <button class="btn-secondary-lg" id="new-decrypt-btn">
+              🔄 Open Another Package
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast-container"></div>
+
+  <script src="/js/shared.js"></script>
+  <script>
+    // ===================================================
+    // Decrypt Page Logic
+    // ===================================================
+
+    let selectedPackage = null;
+    let decryptedBlob = null;
+    let decryptedFilename = '';
+
+    const pkgInput = document.getElementById('pkg-file-input');
+    const uploadZone = document.getElementById('pkg-upload-zone');
+    const decryptBtn = document.getElementById('decrypt-btn');
+    const passInput = document.getElementById('pkg-passphrase');
+
+    // ---- Package Selection ----
+    pkgInput.addEventListener('change', e => {
+      if (e.target.files[0]) selectPackage(e.target.files[0]);
+    });
+
+    uploadZone.addEventListener('click', () => pkgInput.click());
+    uploadZone.addEventListener('keypress', e => { if (e.key === 'Enter' || e.key === ' ') pkgInput.click(); });
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) selectPackage(e.dataTransfer.files[0]);
+    });
+
+    document.getElementById('clear-pkg-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      clearPackage();
+    });
+
+    function selectPackage(file) {
+      selectedPackage = file;
+      document.getElementById('pkg-file-info').classList.remove('hidden');
+      document.getElementById('pkg-name-display').textContent = file.name;
+      document.getElementById('pkg-size-display').textContent = formatBytes(file.size) + ' · .secure package';
+      resetDecryptSteps();
+      hideResultCards();
+      updateDecryptBtn();
+    }
+
+    function clearPackage() {
+      selectedPackage = null;
+      pkgInput.value = '';
+      document.getElementById('pkg-file-info').classList.add('hidden');
+      resetDecryptSteps();
+      hideResultCards();
+      updateDecryptBtn();
+    }
+
+    passInput.addEventListener('input', updateDecryptBtn);
+
+    document.getElementById('toggle-pkg-pw').addEventListener('click', () => {
+      passInput.type = passInput.type === 'password' ? 'text' : 'password';
+    });
+
+    function updateDecryptBtn() {
+      decryptBtn.disabled = !(selectedPackage && passInput.value.length >= 1);
+    }
+
+    // ---- Steps ----
+    function setStep(id, state, status) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.className = 'process-step' + (state ? ' ps-' + state : '');
+      const s = document.getElementById(id + '-status');
+      if (s) s.textContent = status;
+    }
+
+    function resetDecryptSteps() {
+      ['ds-parse', 'ds-integrity', 'ds-sig', 'ds-pbkdf2', 'ds-unwrap', 'ds-decrypt'].forEach(s => {
+        setStep(s, '', '—');
+      });
+    }
+
+    function hideResultCards() {
+      document.getElementById('status-card').classList.add('hidden');
+      document.getElementById('download-card').classList.add('hidden');
+      decryptedBlob = null;
+    }
+
+    // ---- Decrypt ----
+    decryptBtn.addEventListener('click', async () => {
+      if (!selectedPackage || !passInput.value) return;
+
+      decryptBtn.disabled = true;
+      document.getElementById('decrypt-btn-text').textContent = '⏳ Processing...';
+      document.getElementById('decrypt-spinner').classList.remove('hidden');
+      hideResultCards();
+      resetDecryptSteps();
+
+      const formData = new FormData();
+      formData.append('package', selectedPackage);
+      formData.append('passphrase', passInput.value);
+
+      const stepDelay = ms => new Promise(r => setTimeout(r, ms));
+
+      try {
+        setStep('ds-parse', 'active', '⏳');
+        await stepDelay(200);
+
+        const response = await fetch('/api/crypto/decrypt', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          const errCode = errData.error || 'UNKNOWN_ERROR';
+
+          // Show specific step failures
+          if (errCode === 'INVALID_PACKAGE') {
+            setStep('ds-parse', 'error', '✗ INVALID');
+            showStatusBanner('INVALID PACKAGE', 'error',
+              errData.message || 'This file is not a valid .secure package.');
+          } else if (errCode === 'INTEGRITY_FAILED') {
+            setStep('ds-parse', 'done', '✓');
+            setStep('ds-integrity', 'error', '✗ FAILED');
+            showStatusBanner('TAMPERING DETECTED', 'error',
+              errData.message || 'SHA-256 hash mismatch — the package has been tampered or corrupted.');
+          } else if (errCode === 'SIGNATURE_INVALID') {
+            setStep('ds-parse', 'done', '✓');
+            setStep('ds-integrity', 'done', '✓ VERIFIED');
+            setStep('ds-sig', 'error', '✗ INVALID');
+            showStatusBanner('DIGITAL SIGNATURE INVALID', 'error',
+              errData.message || 'Signature verification failed — authenticity cannot be confirmed.');
+          } else if (errCode === 'DECRYPTION_FAILED') {
+            setStep('ds-parse', 'done', '✓');
+            setStep('ds-integrity', 'done', '✓ VERIFIED');
+            setStep('ds-sig', 'done', '✓ VERIFIED');
+            setStep('ds-pbkdf2', 'done', '✓');
+            setStep('ds-unwrap', 'error', '✗ FAILED');
+            showStatusBanner('WRONG PASSPHRASE', 'error',
+              'Decryption failed. The passphrase is incorrect or the package is corrupted.');
+          } else {
+            setStep('ds-parse', 'error', '✗');
+            showStatusBanner('ERROR', 'error', errData.error || 'An unexpected error occurred.');
+          }
+          return;
+        }
+
+        // Animate remaining steps
+        setStep('ds-parse', 'done', '✓');
+        await stepDelay(150); setStep('ds-integrity', 'done', '✓ VERIFIED');
+        await stepDelay(150); setStep('ds-sig', 'done', response.headers.get('x-signature-ok') === 'N/A' ? '— UNSIGNED' : '✓ VERIFIED');
+        await stepDelay(150); setStep('ds-pbkdf2', 'done', '✓');
+        await stepDelay(150); setStep('ds-unwrap', 'done', '✓');
+        await stepDelay(150); setStep('ds-decrypt', 'done', '✓');
+
+        decryptedBlob = await response.blob();
+
+        const cd = response.headers.get('Content-Disposition') || '';
+        decryptedFilename = cd.includes('filename=')
+          ? cd.split('filename=')[1].replace(/"/g, '').trim()
+          : 'decrypted_file';
+
+        const h = {};
+        ['x-original-filename', 'x-integrity-ok', 'x-signature-ok',
+          'x-decryption-time-ms', 'x-total-time-ms', 'x-hashing-time-ms'].forEach(k => {
+          h[k] = response.headers.get(k);
+        });
+
+        showDecryptResult(h);
+        showToast('Decryption successful!', 'success');
+      } catch (err) {
+        setStep('ds-parse', 'error', '✗');
+        showStatusBanner('ERROR', 'error', err.message);
+        showToast(err.message, 'error');
+      } finally {
+        decryptBtn.disabled = false;
+        document.getElementById('decrypt-btn-text').textContent = '🛡️ Verify & Decrypt Package';
+        document.getElementById('decrypt-spinner').classList.add('hidden');
+        updateDecryptBtn();
+      }
+    });
+
+    function showStatusBanner(title, type, message) {
+      const card = document.getElementById('status-card');
+      const icons = { error: '🚨', success: '✅', warning: '⚠️' };
+      const colors = { error: 'var(--danger)', success: 'var(--success)', warning: 'var(--warning)' };
+      card.innerHTML = `
+        <div style="padding: 20px; border-radius: 12px; border: 1px solid ${colors[type]}33; background: ${colors[type]}11; text-align:center;">
+          <div style="font-size: 40px; margin-bottom: 8px;">${icons[type]}</div>
+          <div style="font-size: 18px; font-weight: 800; color: ${colors[type]}; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">${title}</div>
+          <div style="font-size: 14px; color: var(--text-secondary);">${message}</div>
+        </div>
+      `;
+      card.classList.remove('hidden');
+    }
+
+    function showDecryptResult(h) {
+      document.getElementById('decrypt-timing').textContent =
+        `Total: ${h['x-total-time-ms']}ms · Decryption: ${h['x-decryption-time-ms']}ms`;
+
+      const integrityOk = h['x-integrity-ok'] === 'true';
+      const sigOk = h['x-signature-ok'];
+
+      document.getElementById('decrypt-metrics').innerHTML = `
+        <div class="metric-item">
+          <div class="metric-label">File Name</div>
+          <div class="metric-value">${h['x-original-filename'] || decryptedFilename}</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">File Size</div>
+          <div class="metric-value">${formatBytes(decryptedBlob?.size || 0)}</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">Integrity (SHA-256)</div>
+          <div class="metric-value"><span class="metric-badge ${integrityOk ? 'green' : 'red'}">${integrityOk ? '✓ VERIFIED' : '✗ FAILED'}</span></div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">Digital Signature</div>
+          <div class="metric-value"><span class="metric-badge ${sigOk === 'true' ? 'green' : sigOk === 'N/A' ? 'muted' : 'red'}">${sigOk === 'true' ? '✓ VERIFIED' : sigOk === 'N/A' ? '— N/A' : '✗ FAILED'}</span></div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">Hash Time</div>
+          <div class="metric-value">${h['x-hashing-time-ms']}ms</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">Decrypt Time</div>
+          <div class="metric-value">${h['x-decryption-time-ms']}ms</div>
+        </div>
+      `;
+
+      document.getElementById('download-card').classList.remove('hidden');
+    }
+
+    document.getElementById('download-decrypted-btn').addEventListener('click', () => {
+      if (!decryptedBlob) return;
+      const url = URL.createObjectURL(decryptedBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = decryptedFilename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast('File downloaded!', 'success');
+    });
+
+    document.getElementById('new-decrypt-btn').addEventListener('click', () => {
+      clearPackage();
+      passInput.value = '';
+    });
+  </script>
+</body>
+</html>

@@ -3,25 +3,361 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Secure Cloud — Redirecting...</title>
-  <script>
-    (async () => {
-      try {
-        const r = await fetch('/api/auth/setup-status');
-        const d = await r.json();
-        if (d.setupRequired) {
-          window.location.href = '/setup.html';
-        } else {
-          const token = localStorage.getItem('sc_token');
-          window.location.href = token ? '/dashboard.html' : '/login.html';
-        }
-      } catch {
-        window.location.href = '/login.html';
-      }
-    })();
-  </script>
+  <title>Secure Cloud — Hybrid Cryptography File Encryption</title>
+  <meta name="description" content="Secure file encryption using AES-256-GCM, RSA-2048-OAEP, SHA-256 and digital signatures. No files stored. No account required.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
 </head>
-<body style="background:#050d1a; color:#e2e8f0; font-family:Inter,sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0;">
-  <p>Loading Secure Cloud...</p>
+<body class="home-body">
+
+  <!-- Navigation -->
+  <nav class="home-nav">
+    <div class="nav-brand">
+      <span class="brand-icon">🔐</span>
+      <span class="brand-name">SECURE <span class="brand-accent">CLOUD</span></span>
+    </div>
+    <div class="nav-links">
+      <a href="/encrypt.html" class="nav-link">Encrypt</a>
+      <a href="/decrypt.html" class="nav-link">Decrypt</a>
+      <a href="#how-it-works" class="nav-link">How It Works</a>
+    </div>
+    <div class="nav-actions">
+      <a href="/encrypt.html" class="btn-nav-cta">Start Encrypting →</a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-bg">
+      <div class="hero-grid"></div>
+      <div class="hero-glow-1"></div>
+      <div class="hero-glow-2"></div>
+    </div>
+
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        Capstone Project — Cryptography &amp; Network Security
+      </div>
+
+      <h1 class="hero-title">
+        Military-Grade<br>
+        <span class="title-gradient">File Encryption</span><br>
+        in Your Browser
+      </h1>
+
+      <p class="hero-description">
+        Encrypt any file with <strong>AES-256-GCM</strong> symmetric encryption,
+        protect the key with <strong>RSA-2048-OAEP</strong>, generate a
+        <strong>SHA-256</strong> integrity hash and an <strong>RSA-SHA256</strong>
+        digital signature — all processed server-side in memory.
+        <em>No file is ever stored. No account required.</em>
+      </p>
+
+      <div class="hero-actions">
+        <a href="/encrypt.html" class="btn-hero-primary" id="hero-encrypt-btn">
+          <span>🔒</span> Encrypt a File
+        </a>
+        <a href="/decrypt.html" class="btn-hero-secondary" id="hero-decrypt-btn">
+          <span>🔓</span> Decrypt a Package
+        </a>
+      </div>
+
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="stat-num">AES-256</div>
+          <div class="stat-label">GCM Encryption</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="hero-stat">
+          <div class="stat-num">RSA-2048</div>
+          <div class="stat-label">OAEP Key Wrap</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="hero-stat">
+          <div class="stat-num">SHA-256</div>
+          <div class="stat-label">Integrity Hash</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="hero-stat">
+          <div class="stat-num">PBKDF2</div>
+          <div class="stat-label">310K Iterations</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Animated crypto visual -->
+    <div class="hero-visual">
+      <div class="crypto-card" id="crypto-visual-card">
+        <div class="crypto-flow">
+          <div class="crypto-node file-node">
+            <span class="node-icon">📄</span>
+            <span class="node-label">Plaintext</span>
+          </div>
+          <div class="crypto-arrow active-arrow" id="arrow-aes">
+            <div class="arrow-line"></div>
+            <span class="arrow-label">AES-256-GCM</span>
+          </div>
+          <div class="crypto-node enc-node">
+            <span class="node-icon">🔒</span>
+            <span class="node-label">Ciphertext</span>
+          </div>
+        </div>
+        <div class="crypto-flow crypto-flow-2">
+          <div class="crypto-node key-node">
+            <span class="node-icon">🗝️</span>
+            <span class="node-label">AES Key</span>
+          </div>
+          <div class="crypto-arrow" id="arrow-rsa">
+            <div class="arrow-line"></div>
+            <span class="arrow-label">RSA-OAEP</span>
+          </div>
+          <div class="crypto-node wrap-node">
+            <span class="node-icon">📦</span>
+            <span class="node-label">.secure</span>
+          </div>
+        </div>
+        <div class="crypto-tags">
+          <span class="ctag ctag-cyan">SHA-256 Integrity</span>
+          <span class="ctag ctag-green">Digital Signature</span>
+          <span class="ctag ctag-purple">Zero Storage</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="how-section" id="how-it-works">
+    <div class="section-container">
+      <div class="section-header">
+        <div class="section-badge">Architecture</div>
+        <h2 class="section-title">How Hybrid Cryptography Works</h2>
+        <p class="section-subtitle">Combining the speed of symmetric encryption with the security of asymmetric key protection</p>
+      </div>
+
+      <div class="how-grid">
+        <!-- Encrypt Flow -->
+        <div class="how-card encrypt-card">
+          <div class="how-card-header">
+            <span class="how-number">01</span>
+            <h3 class="how-title">🔒 Encrypt</h3>
+          </div>
+          <div class="how-steps">
+            <div class="how-step">
+              <div class="step-badge cyan">1</div>
+              <div>
+                <strong>RSA-2048 Key Pair Generated</strong><br>
+                <span class="step-desc">Ephemeral keypair created per session — private key never leaves server memory</span>
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="step-badge cyan">2</div>
+              <div>
+                <strong>AES-256-GCM Encryption</strong><br>
+                <span class="step-desc">File encrypted with a random 256-bit key using Galois/Counter Mode for authenticated encryption</span>
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="step-badge cyan">3</div>
+              <div>
+                <strong>RSA-OAEP Key Wrapping</strong><br>
+                <span class="step-desc">AES key encrypted with RSA public key — only the passphrase-holder can unwrap it</span>
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="step-badge green">4</div>
+              <div>
+                <strong>SHA-256 Integrity Hash</strong><br>
+                <span class="step-desc">SHA-256 hash computed over ciphertext for tamper detection</span>
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="step-badge purple">5</div>
+              <div>
+                <strong>RSA-SHA256 Digital Signature</strong><br>
+                <span class="step-desc">Hash signed with RSA private key to prove authenticity and origin</span>
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="step-badge orange">6</div>
+              <div>
+                <strong>PBKDF2 Passphrase Protection</strong><br>
+                <span class="step-desc">AES key additionally protected with 310,000 PBKDF2 iterations — download and go</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decrypt Flow -->
+        <div class="how-card decrypt-card">
+          <div class="how-card-header">
+            <span class="how-number">02</span>
+            <h3 class="how-title">🔓 Decrypt</h3>
+          </div>
+          <div class="how-steps">
+            <div class="how-step">
+              <div class="step-badge cyan">1</div>
+              <div>
+                <strong>Package Parsed</strong><br>
+                <span class="step-desc">The .secure JSON envelope is parsed and validated for required cryptographic fields</span>
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="step-badge green">2</div>
+              <div>
+                <strong>SHA-256 Integrity Check</strong><br>
+                <span class="step-desc">Ciphertext hash recomputed and compared — any tampering detected immediately</span>
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="step-badge purple">3</div>
+              <div>
+                <strong>Digital Signature Verified</strong><br>
+                <span class="step-desc">RSA-SHA256 signature verified using the embedded public key — confirms authenticity</span>
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="step-badge orange">4</div>
+              <div>
+                <strong>Passphrase Key Derivation</strong><br>
+                <span class="step-desc">Your passphrase run through PBKDF2-SHA256 (310,000 iterations + salt) to produce AES unwrapping key</span>
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="step-badge cyan">5</div>
+              <div>
+                <strong>AES Key Unwrapped</strong><br>
+                <span class="step-desc">The passphrase-derived key decrypts the wrapped AES-256 session key</span>
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="step-badge green">6</div>
+              <div>
+                <strong>File Decrypted &amp; Downloaded</strong><br>
+                <span class="step-desc">AES-256-GCM decrypts the original file — nothing stored, streamed directly to you</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Algorithm Details -->
+  <section class="algo-section">
+    <div class="section-container">
+      <div class="section-header">
+        <div class="section-badge">Security Parameters</div>
+        <h2 class="section-title">Cryptographic Algorithms</h2>
+      </div>
+      <div class="algo-grid">
+        <div class="algo-card">
+          <div class="algo-icon" style="background: linear-gradient(135deg, #00b4d8, #0077b6);">🔐</div>
+          <div class="algo-name">AES-256-GCM</div>
+          <div class="algo-role">Symmetric File Encryption</div>
+          <div class="algo-details">256-bit key · 96-bit IV · 128-bit AuthTag · AEAD</div>
+        </div>
+        <div class="algo-card">
+          <div class="algo-icon" style="background: linear-gradient(135deg, #7209b7, #480ca8);">🗝️</div>
+          <div class="algo-name">RSA-2048-OAEP</div>
+          <div class="algo-role">Asymmetric Key Protection</div>
+          <div class="algo-details">2048-bit modulus · OAEP/SHA-256 padding · PKCS#8</div>
+        </div>
+        <div class="algo-card">
+          <div class="algo-icon" style="background: linear-gradient(135deg, #00b894, #00cec9);">🔍</div>
+          <div class="algo-name">SHA-256</div>
+          <div class="algo-role">Integrity Hashing</div>
+          <div class="algo-details">256-bit digest · Computed over ciphertext · Tamper detection</div>
+        </div>
+        <div class="algo-card">
+          <div class="algo-icon" style="background: linear-gradient(135deg, #f77f00, #d62828);">✍️</div>
+          <div class="algo-name">RSA-SHA256</div>
+          <div class="algo-role">Digital Signatures</div>
+          <div class="algo-details">Signs hash:filename payload · Embedded public key · PKCS#1 v1.5</div>
+        </div>
+        <div class="algo-card">
+          <div class="algo-icon" style="background: linear-gradient(135deg, #e040fb, #7c4dff);">🔑</div>
+          <div class="algo-name">PBKDF2-SHA256</div>
+          <div class="algo-role">Password-Based Key Derivation</div>
+          <div class="algo-details">310,000 iterations · 128-bit random salt · 256-bit output</div>
+        </div>
+        <div class="algo-card">
+          <div class="algo-icon" style="background: linear-gradient(135deg, #43aa8b, #277da1);">📦</div>
+          <div class="algo-name">.secure Package</div>
+          <div class="algo-role">Self-Contained Envelope</div>
+          <div class="algo-details">JSON · Base64 ciphertext · All crypto material included · Shareable</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Zero Storage Promise -->
+  <section class="promise-section">
+    <div class="section-container">
+      <div class="promise-card">
+        <div class="promise-icon">🛡️</div>
+        <h2 class="promise-title">Zero Storage Architecture</h2>
+        <p class="promise-text">
+          Your files are processed entirely in server memory and immediately streamed back to you.
+          <strong>No file is ever written to disk or stored in any database.</strong>
+          The server is stateless — it performs the cryptographic operations and forgets everything.
+          You control where the encrypted package goes.
+        </p>
+        <div class="promise-bullets">
+          <div class="promise-bullet"><span>✅</span> No account required</div>
+          <div class="promise-bullet"><span>✅</span> No file retention</div>
+          <div class="promise-bullet"><span>✅</span> No database</div>
+          <div class="promise-bullet"><span>✅</span> No cloud storage</div>
+          <div class="promise-bullet"><span>✅</span> Share via any channel</div>
+          <div class="promise-bullet"><span>✅</span> Open source algorithms</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Footer -->
+  <footer class="home-footer">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <span class="brand-icon">🔐</span> SECURE CLOUD
+        <span class="footer-tagline">— Hybrid Cryptography System</span>
+      </div>
+      <div class="footer-actions">
+        <a href="/encrypt.html" class="btn-footer" id="footer-encrypt-btn">🔒 Encrypt File</a>
+        <a href="/decrypt.html" class="btn-footer btn-footer-outline" id="footer-decrypt-btn">🔓 Open .secure Package</a>
+      </div>
+      <div class="footer-meta">
+        Capstone Project · Cryptography &amp; Network Security · AES-256-GCM + RSA-2048-OAEP
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Animate crypto arrows
+    let toggle = true;
+    setInterval(() => {
+      const a1 = document.getElementById('arrow-aes');
+      const a2 = document.getElementById('arrow-rsa');
+      if (toggle) {
+        a1.classList.add('active-arrow');
+        a2.classList.remove('active-arrow');
+      } else {
+        a1.classList.remove('active-arrow');
+        a2.classList.add('active-arrow');
+      }
+      toggle = !toggle;
+    }, 2000);
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        const target = document.querySelector(a.getAttribute('href'));
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  </script>
 </body>
 </html>

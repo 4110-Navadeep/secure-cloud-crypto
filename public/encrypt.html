@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Encrypt File — Secure Cloud Hybrid Cryptography</title>
+  <meta name="description" content="Upload any file and encrypt it with AES-256-GCM + RSA-2048 digital signature. Download the encrypted .secure package instantly.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-body">
+
+  <!-- Top Navigation -->
+  <nav class="app-nav">
+    <a href="/" class="nav-brand">
+      <span class="brand-icon">🔐</span>
+      <span class="brand-name">SECURE <span class="brand-accent">CLOUD</span></span>
+    </a>
+    <div class="app-nav-links">
+      <a href="/encrypt.html" class="app-nav-link active" id="nav-encrypt">🔒 Encrypt</a>
+      <a href="/decrypt.html" class="app-nav-link" id="nav-decrypt">🔓 Decrypt</a>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="app-main">
+    <div class="page-header">
+      <div class="page-header-inner">
+        <h1 class="page-title">🔒 Secure File Encryption</h1>
+        <span class="module-badge">MODULE 1 — HYBRID CRYPTOGRAPHY</span>
+      </div>
+      <p class="page-subtitle">
+        Upload any file. It will be encrypted with <strong>AES-256-GCM</strong>, the key wrapped with
+        <strong>RSA-2048-OAEP</strong>, hashed with <strong>SHA-256</strong> and optionally signed with
+        <strong>RSA-SHA256</strong>. Download the self-contained <code>.secure</code> package.
+      </p>
+    </div>
+
+    <div class="two-col-layout">
+      <!-- LEFT: Upload Form -->
+      <div class="col-left">
+        <div class="glass-card">
+          <div class="glass-card-header">
+            <div class="card-title-row">
+              <span class="card-icon">📤</span>
+              <h2 class="card-title">Upload &amp; Encrypt File</h2>
+            </div>
+          </div>
+
+          <!-- Upload Zone -->
+          <div class="upload-zone" id="upload-zone" tabindex="0" role="button" aria-label="Upload file">
+            <div class="upload-zone-inner">
+              <div class="upload-zone-icon">📁</div>
+              <div class="upload-zone-title">Drag &amp; drop your file here</div>
+              <div class="upload-zone-hint">or <span class="upload-browse-link">click to browse</span> — any file type, max 100 MB</div>
+            </div>
+            <input type="file" id="file-input" accept="*/*" aria-label="Choose file to encrypt">
+          </div>
+
+          <!-- File Info -->
+          <div id="file-info" class="file-info-bar hidden">
+            <span id="file-icon-display" class="file-icon-lg">📄</span>
+            <div class="file-info-text">
+              <div class="file-info-name" id="file-name-display">—</div>
+              <div class="file-info-meta" id="file-meta-display">—</div>
+            </div>
+            <button class="file-clear-btn" id="clear-file-btn" title="Remove file">✕</button>
+          </div>
+
+          <!-- Passphrase -->
+          <div class="form-field">
+            <label class="field-label" for="passphrase">
+              Encryption Passphrase <span class="required-star">*</span>
+            </label>
+            <div class="field-input-wrap">
+              <input type="password" class="field-input" id="passphrase"
+                placeholder="Min 6 characters" autocomplete="new-password">
+              <button class="toggle-pw-btn" id="toggle-pw" type="button" aria-label="Toggle password visibility">👁</button>
+            </div>
+            <div class="field-hint">
+              This passphrase is required to decrypt the .secure package later.
+              <strong>Keep it secret — it is not stored anywhere.</strong>
+            </div>
+            <div class="pw-strength" id="pw-strength">
+              <div class="pw-strength-bar" id="pw-strength-bar"></div>
+            </div>
+            <div class="pw-strength-label" id="pw-strength-label"></div>
+          </div>
+
+          <!-- Signature Option -->
+          <div class="option-row">
+            <label class="toggle-label" for="sig-toggle">
+              <input type="checkbox" id="sig-toggle" checked>
+              <span class="toggle-switch"></span>
+              <div>
+                <div class="option-title">✍️ Enable Digital Signature (RSA-SHA256)</div>
+                <div class="option-desc">Signs the file hash with an RSA-2048 private key — proves authenticity on decryption</div>
+              </div>
+            </label>
+          </div>
+
+          <!-- Encrypt Button -->
+          <button class="btn-primary-lg w-full" id="encrypt-btn" disabled>
+            <span id="encrypt-btn-text">🔐 Encrypt &amp; Generate .secure Package</span>
+            <div id="encrypt-spinner" class="btn-spinner hidden"></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- RIGHT: Process + Result -->
+      <div class="col-right">
+        <!-- Encryption Process Visualization -->
+        <div class="glass-card" id="process-card">
+          <div class="glass-card-header">
+            <div class="card-title-row">
+              <span class="card-icon">⚙️</span>
+              <h2 class="card-title">Encryption Process</h2>
+            </div>
+          </div>
+
+          <div class="process-steps" id="process-steps">
+            <div class="process-step" id="ps-file">
+              <div class="ps-icon">📄</div>
+              <div class="ps-info">
+                <div class="ps-title">FILE SELECTED</div>
+                <div class="ps-sub" id="ps-file-sub">Waiting for file...</div>
+              </div>
+              <div class="ps-status" id="ps-file-status">—</div>
+            </div>
+            <div class="ps-connector"></div>
+
+            <div class="process-step" id="ps-rsa">
+              <div class="ps-icon">🗝️</div>
+              <div class="ps-info">
+                <div class="ps-title">RSA-2048 KEY PAIR GENERATION</div>
+                <div class="ps-sub">Ephemeral asymmetric keypair</div>
+              </div>
+              <div class="ps-status" id="ps-rsa-status">—</div>
+            </div>
+            <div class="ps-connector"></div>
+
+            <div class="process-step" id="ps-aes">
+              <div class="ps-icon">🔐</div>
+              <div class="ps-info">
+                <div class="ps-title">AES-256-GCM ENCRYPTION</div>
+                <div class="ps-sub">Symmetric cipher + auth tag</div>
+              </div>
+              <div class="ps-status" id="ps-aes-status">—</div>
+            </div>
+            <div class="ps-connector"></div>
+
+            <div class="process-step" id="ps-wrap">
+              <div class="ps-icon">📦</div>
+              <div class="ps-info">
+                <div class="ps-title">RSA-OAEP KEY WRAPPING</div>
+                <div class="ps-sub">AES key protected with RSA public key</div>
+              </div>
+              <div class="ps-status" id="ps-wrap-status">—</div>
+            </div>
+            <div class="ps-connector"></div>
+
+            <div class="process-step" id="ps-hash">
+              <div class="ps-icon">🔍</div>
+              <div class="ps-info">
+                <div class="ps-title">SHA-256 INTEGRITY HASH</div>
+                <div class="ps-sub">Hash over encrypted ciphertext</div>
+              </div>
+              <div class="ps-status" id="ps-hash-status">—</div>
+            </div>
+            <div class="ps-connector"></div>
+
+            <div class="process-step" id="ps-sig">
+              <div class="ps-icon">✍️</div>
+              <div class="ps-info">
+                <div class="ps-title">DIGITAL SIGNATURE (RSA-SHA256)</div>
+                <div class="ps-sub">Signs hash with RSA private key</div>
+              </div>
+              <div class="ps-status" id="ps-sig-status">—</div>
+            </div>
+            <div class="ps-connector"></div>
+
+            <div class="process-step" id="ps-pbkdf2">
+              <div class="ps-icon">🔑</div>
+              <div class="ps-info">
+                <div class="ps-title">PBKDF2 PASSPHRASE PROTECTION</div>
+                <div class="ps-sub">310,000 iterations · random salt</div>
+              </div>
+              <div class="ps-status" id="ps-pbkdf2-status">—</div>
+            </div>
+            <div class="ps-connector"></div>
+
+            <div class="process-step" id="ps-pkg">
+              <div class="ps-icon">⬇️</div>
+              <div class="ps-info">
+                <div class="ps-title">PACKAGE READY</div>
+                <div class="ps-sub">Self-contained .secure envelope</div>
+              </div>
+              <div class="ps-status" id="ps-pkg-status">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Result Card -->
+        <div class="glass-card result-card hidden" id="result-card">
+          <div class="result-header">
+            <div class="result-success-banner">
+              <span class="result-success-icon">✅</span>
+              <div>
+                <div class="result-success-title">Encryption Successful</div>
+                <div class="result-success-sub" id="result-timing">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="result-metrics" id="result-metrics">
+            <!-- filled dynamically -->
+          </div>
+
+          <div class="hash-section">
+            <div class="hash-label">SHA-256 Integrity Hash</div>
+            <div class="hash-value mono" id="result-hash">—</div>
+          </div>
+
+          <div class="result-actions">
+            <button class="btn-primary-lg" id="download-btn">
+              📦 Download .secure Package
+            </button>
+            <button class="btn-secondary-lg" id="new-encrypt-btn">
+              🔄 Encrypt Another File
+            </button>
+          </div>
+
+          <div class="result-note">
+            <span>💡</span>
+            <span>Share this .secure package via any channel. Use the <a href="/decrypt.html" class="result-link">Decrypt page</a> to recover the file later.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast-container"></div>
+
+  <script src="/js/shared.js"></script>
+  <script>
+    // ===================================================
+    // Encrypt Page Logic
+    // ===================================================
+
+    let selectedFile = null;
+    let encryptResultHeaders = {};
+    let encryptedPackageBlob = null;
+    let encryptedFilename = '';
+
+    const fileInput = document.getElementById('file-input');
+    const uploadZone = document.getElementById('upload-zone');
+    const encryptBtn = document.getElementById('encrypt-btn');
+    const passInput = document.getElementById('passphrase');
+    const sigToggle = document.getElementById('sig-toggle');
+
+    // ---- File Selection ----
+    fileInput.addEventListener('change', e => {
+      if (e.target.files[0]) selectFile(e.target.files[0]);
+    });
+
+    uploadZone.addEventListener('click', () => fileInput.click());
+    uploadZone.addEventListener('keypress', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0]);
+    });
+
+    document.getElementById('clear-file-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      clearFile();
+    });
+
+    function selectFile(file) {
+      selectedFile = file;
+      document.getElementById('file-info').classList.remove('hidden');
+      document.getElementById('file-icon-display').textContent = getMimeIcon(file.type);
+      document.getElementById('file-name-display').textContent = file.name;
+      document.getElementById('file-meta-display').textContent = formatBytes(file.size) + ' · ' + (file.type || 'binary');
+      setStep('ps-file', 'done', '✓');
+      document.getElementById('ps-file-sub').textContent = file.name;
+      updateEncryptBtn();
+    }
+
+    function clearFile() {
+      selectedFile = null;
+      fileInput.value = '';
+      document.getElementById('file-info').classList.add('hidden');
+      setStep('ps-file', '', '—');
+      document.getElementById('ps-file-sub').textContent = 'Waiting for file...';
+      updateEncryptBtn();
+    }
+
+    // ---- Passphrase Strength ----
+    passInput.addEventListener('input', () => {
+      updateEncryptBtn();
+      updatePasswordStrength(passInput.value);
+    });
+
+    document.getElementById('toggle-pw').addEventListener('click', () => {
+      const type = passInput.type === 'password' ? 'text' : 'password';
+      passInput.type = type;
+    });
+
+    function updatePasswordStrength(pw) {
+      const bar = document.getElementById('pw-strength-bar');
+      const label = document.getElementById('pw-strength-label');
+      if (!pw) { bar.style.width = '0%'; label.textContent = ''; return; }
+      let score = 0;
+      if (pw.length >= 8) score++;
+      if (pw.length >= 12) score++;
+      if (/[A-Z]/.test(pw)) score++;
+      if (/[0-9]/.test(pw)) score++;
+      if (/[^a-zA-Z0-9]/.test(pw)) score++;
+      const pcts = ['0%', '20%', '40%', '60%', '80%', '100%'];
+      const colors = ['', '#ff4757', '#ffa502', '#eccc68', '#2ed573', '#00b894'];
+      const labels = ['', 'Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
+      bar.style.width = pcts[score];
+      bar.style.background = colors[score];
+      label.textContent = labels[score];
+      label.style.color = colors[score];
+    }
+
+    function updateEncryptBtn() {
+      encryptBtn.disabled = !(selectedFile && passInput.value.length >= 6);
+    }
+
+    // ---- Step Indicators ----
+    function setStep(id, state, status) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.className = 'process-step' + (state ? ' ps-' + state : '');
+      const s = document.getElementById(id + '-status');
+      if (s) s.textContent = status;
+    }
+
+    function resetSteps() {
+      const steps = ['ps-rsa', 'ps-aes', 'ps-wrap', 'ps-hash', 'ps-sig', 'ps-pbkdf2', 'ps-pkg'];
+      steps.forEach(s => setStep(s, '', '—'));
+    }
+
+    // ---- Encrypt ----
+    encryptBtn.addEventListener('click', async () => {
+      if (!selectedFile || passInput.value.length < 6) return;
+
+      encryptBtn.disabled = true;
+      document.getElementById('encrypt-btn-text').textContent = '⏳ Encrypting...';
+      document.getElementById('encrypt-spinner').classList.remove('hidden');
+      document.getElementById('result-card').classList.add('hidden');
+      resetSteps();
+
+      // Animate steps with delays (real processing happens server-side)
+      const stepDelay = ms => new Promise(r => setTimeout(r, ms));
+      const animateSteps = async () => {
+        await stepDelay(100); setStep('ps-rsa', 'active', '⏳');
+        await stepDelay(400); setStep('ps-rsa', 'done', '✓'); setStep('ps-aes', 'active', '⏳');
+        await stepDelay(400); setStep('ps-aes', 'done', '✓'); setStep('ps-wrap', 'active', '⏳');
+        await stepDelay(300); setStep('ps-wrap', 'done', '✓'); setStep('ps-hash', 'active', '⏳');
+        await stepDelay(200); setStep('ps-hash', 'done', '✓'); setStep('ps-sig', 'active', '⏳');
+        await stepDelay(300); setStep('ps-sig', 'done', '✓'); setStep('ps-pbkdf2', 'active', '⏳');
+        await stepDelay(500); setStep('ps-pbkdf2', 'done', '✓'); setStep('ps-pkg', 'active', '⏳');
+      };
+
+      const animPromise = animateSteps();
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('passphrase', passInput.value);
+      formData.append('signatureEnabled', sigToggle.checked ? 'true' : 'false');
+
+      try {
+        const tStart = Date.now();
+        const response = await fetch('/api/crypto/encrypt', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.error || errData.message || 'Encryption failed');
+        }
+
+        await animPromise;
+        setStep('ps-pkg', 'done', '✓');
+
+        encryptedPackageBlob = await response.blob();
+
+        // Read response headers
+        const h = {};
+        ['x-original-filename', 'x-original-size', 'x-encrypted-size', 'x-sha256-hash',
+          'x-encryption-time-ms', 'x-total-time-ms', 'x-signature-status'].forEach(k => {
+          h[k] = response.headers.get(k);
+        });
+        encryptResultHeaders = h;
+
+        // Extract filename from Content-Disposition
+        const cd = response.headers.get('Content-Disposition') || '';
+        encryptedFilename = cd.includes('filename=')
+          ? cd.split('filename=')[1].replace(/"/g, '').trim()
+          : (selectedFile.name.replace(/\.[^.]+$/, '') + '.secure');
+
+        showResult(h);
+        showToast('File encrypted successfully!', 'success');
+      } catch (err) {
+        await animPromise.catch(() => {});
+        setStep('ps-pkg', 'error', '✗');
+        showToast('Encryption failed: ' + err.message, 'error');
+      } finally {
+        encryptBtn.disabled = false;
+        document.getElementById('encrypt-btn-text').textContent = '🔐 Encrypt & Generate .secure Package';
+        document.getElementById('encrypt-spinner').classList.add('hidden');
+        updateEncryptBtn();
+      }
+    });
+
+    function showResult(h) {
+      const origSize = parseInt(h['x-original-size'] || 0);
+      const encSize = parseInt(h['x-encrypted-size'] || 0);
+      const overhead = origSize > 0 ? ((encSize - origSize) / origSize * 100).toFixed(1) : '—';
+      const sigStatus = h['x-signature-status'] || '—';
+
+      document.getElementById('result-timing').textContent =
+        `Total: ${h['x-total-time-ms']}ms · Encryption: ${h['x-encryption-time-ms']}ms`;
+
+      document.getElementById('result-metrics').innerHTML = `
+        <div class="metric-item">
+          <div class="metric-label">Original File</div>
+          <div class="metric-value">${formatBytes(origSize)}</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">Encrypted Size</div>
+          <div class="metric-value">${formatBytes(encSize)}</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">Algorithm</div>
+          <div class="metric-value"><span class="metric-badge cyan">AES-256-GCM</span></div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">Key Protection</div>
+          <div class="metric-value"><span class="metric-badge purple">RSA-2048-OAEP</span></div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">Signature</div>
+          <div class="metric-value"><span class="metric-badge ${sigStatus === 'SIGNED' ? 'green' : 'muted'}">${sigStatus === 'SIGNED' ? '✓ SIGNED' : 'UNSIGNED'}</span></div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">Storage Overhead</div>
+          <div class="metric-value">${overhead}%</div>
+        </div>
+      `;
+
+      document.getElementById('result-hash').textContent = h['x-sha256-hash'] || '—';
+
+      document.getElementById('result-card').classList.remove('hidden');
+
+      // Scroll into view
+      setTimeout(() => document.getElementById('result-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+    }
+
+    document.getElementById('download-btn').addEventListener('click', () => {
+      if (!encryptedPackageBlob) return;
+      const url = URL.createObjectURL(encryptedPackageBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = encryptedFilename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast('.secure package downloaded!', 'success');
+    });
+
+    document.getElementById('new-encrypt-btn').addEventListener('click', () => {
+      clearFile();
+      passInput.value = '';
+      updatePasswordStrength('');
+      document.getElementById('result-card').classList.add('hidden');
+      resetSteps();
+      encryptedPackageBlob = null;
+    });
+  </script>
+</body>
+</html>

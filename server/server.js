@@ -4,22 +4,10 @@ require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
-const cookieParser = require('cookie-parser');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 
-const config = require('./config/config');
-const { testConnection } = require('./database/db');
-const { runMigrations } = require('./database/migrate');
-
-// Routes
-const authRoutes = require('./routes/auth');
-const memberRoutes = require('./routes/members');
-const fileRoutes = require('./routes/files');
-const sharingRoutes = require('./routes/sharing');
-const externalPackageRoutes = require('./routes/externalPackage');
-const securityRoutes = require('./routes/security');
-const performanceRoutes = require('./routes/performance');
+const cryptoRoutes = require('./routes/crypto');
 
 const app = express();
 
@@ -30,43 +18,42 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
       imgSrc: ["'self'", "data:", "blob:"],
       connectSrc: ["'self'"],
       objectSrc: ["'none'"],
-      frameSrc: ["'self'", "blob:"],
+      frameSrc: ["'none'"],
     },
   },
 }));
 
 // ---------------------------------------------------------------------------
-// CORS
+// CORS — allow same origin + optional APP_URL
 // ---------------------------------------------------------------------------
 app.use(cors({
-  origin: config.app.url,
-  credentials: true,
+  origin: process.env.APP_URL || true,
+  credentials: false,
 }));
 
 // ---------------------------------------------------------------------------
 // Body Parsing
 // ---------------------------------------------------------------------------
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(cookieParser());
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
 // ---------------------------------------------------------------------------
-// Global Rate Limit
+// Rate Limiting — encrypt/decrypt endpoints
 // ---------------------------------------------------------------------------
-const globalLimiter = rateLimit({
+const cryptoLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 500,
+  max: 60,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests. Please try again later.' },
+  message: { error: 'Too many requests. Please wait before retrying.' },
 });
-app.use('/api', globalLimiter);
+app.use('/api/crypto', cryptoLimiter);
 
 // ---------------------------------------------------------------------------
 // Static Files
@@ -79,25 +66,20 @@ app.use(express.static(path.join(__dirname, '..', 'public'), {
 // ---------------------------------------------------------------------------
 // Health Check
 // ---------------------------------------------------------------------------
-app.get('/health', async (req, res) => {
-  try {
-    await testConnection();
-    res.json({ status: 'ok', database: 'connected', timestamp: new Date().toISOString() });
-  } catch (err) {
-    res.status(503).json({ status: 'error', database: 'disconnected', message: err.message });
-  }
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'Secure Cloud File Sharing System — Hybrid Cryptography',
+    timestamp: new Date().toISOString(),
+    algorithms: ['AES-256-GCM', 'RSA-2048-OAEP', 'SHA-256', 'RSA-SHA256', 'PBKDF2'],
+    storage: 'stateless — no files stored server-side',
+  });
 });
 
 // ---------------------------------------------------------------------------
 // API Routes
 // ---------------------------------------------------------------------------
-app.use('/api/auth', authRoutes);
-app.use('/api/members', memberRoutes);
-app.use('/api/files', fileRoutes);
-app.use('/api/sharing', sharingRoutes);
-app.use('/api/external-package', externalPackageRoutes);
-app.use('/api/security', securityRoutes);
-app.use('/api/performance', performanceRoutes);
+app.use('/api/crypto', cryptoRoutes);
 
 // ---------------------------------------------------------------------------
 // SPA Fallback — serve index.html for all non-API routes
@@ -106,7 +88,6 @@ app.get('*', (req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'Not found' });
   }
-  // Try to serve specific HTML files
   const htmlFile = req.path === '/' ? 'index.html' : req.path.slice(1);
   const fullPath = path.join(__dirname, '..', 'public', htmlFile);
   res.sendFile(fullPath, err => {
@@ -120,15 +101,10 @@ app.get('*', (req, res) => {
 // Error Handler
 // ---------------------------------------------------------------------------
 app.use((err, req, res, next) => {
-  console.error('[SERVER] Unhandled error:', err);
-
+  console.error('[SERVER] Unhandled error:', err.message);
   if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(413).json({ error: `File too large. Maximum size is ${config.upload.maxFileSizeMB} MB.` });
+    return res.status(413).json({ error: 'File too large. Maximum 100 MB.' });
   }
-  if (err.message && err.message.includes('File type')) {
-    return res.status(400).json({ error: err.message });
-  }
-
   res.status(500).json({ error: 'An internal server error occurred' });
 });
 
@@ -136,41 +112,17 @@ app.use((err, req, res, next) => {
 // Startup
 // ---------------------------------------------------------------------------
 async function start() {
-  try {
-    const EXPRESS_PORT = Number(process.env.PORT || 5000);
-
-    // Validate required security env vars
-    const requiredVars = [
-      { name: 'JWT_SECRET',          val: config.jwt.secret },
-      { name: 'APPLICATION_SECRET',  val: config.app.secret },
-    ];
-
-    for (const v of requiredVars) {
-      if (!v.val && v.val !== 0) {
-        console.error(`[SERVER] Missing required environment variable: ${v.name}`);
-        process.exit(1);
-      }
-    }
-
-    console.log('[DATABASE] Checking JSON file-based database connection...');
-    await testConnection();
-    console.log('[DATABASE] File database initialized successfully.');
-
-    await runMigrations();
-
-    // Express listens on process.env.PORT (provided by Render)
-    app.listen(EXPRESS_PORT, '0.0.0.0', () => {
-      console.log(`[SERVER] Application started successfully. Listening on http://0.0.0.0:${EXPRESS_PORT}`);
-      console.log(`[SERVER] Environment: ${config.app.nodeEnv}`);
-    });
-  } catch (err) {
-    console.error('[SERVER] Fatal startup error:', err.message);
-    process.exit(1);
-  }
+  const PORT = Number(process.env.PORT || 5000);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[SERVER] Secure Cloud Cryptography System started.`);
+    console.log(`[SERVER] Listening on http://0.0.0.0:${PORT}`);
+    console.log(`[SERVER] Mode: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`[SERVER] Architecture: Stateless — no server-side file storage.`);
+  });
 }
 
 if (process.env.NODE_ENV !== 'test') {
   start();
 }
 
-module.exports = app; // for testing
+module.exports = app;
