@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Secure Cloud</title>
+  <meta name="description" content="Log in to Secure Cloud — Hybrid Cryptography File Sharing Platform">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body {
+      display: flex; min-height: 100vh; padding: 0;
+      background: radial-gradient(ellipse at 20% 50%, #0a1628 0%, #050d1a 60%);
+    }
+    .login-left {
+      flex: 1; display: flex; flex-direction: column; justify-content: center;
+      align-items: center; padding: 60px 40px;
+      background: linear-gradient(135deg, #050d1a 0%, #0a1628 100%);
+      border-right: 1px solid var(--border-color);
+    }
+    .login-right {
+      width: 460px; display: flex; align-items: center; justify-content: center; padding: 40px;
+    }
+    .login-card { width: 100%; }
+    .hero-logo { font-size: 60px; margin-bottom: 24px; }
+    .hero-title {
+      font-size: 36px; font-weight: 800; color: var(--text-primary);
+      letter-spacing: 2px; text-align: center; line-height: 1.2;
+    }
+    .hero-accent { color: var(--accent-cyan); }
+    .hero-subtitle { color: var(--text-secondary); font-size: 14px; text-align: center; margin-top: 12px; line-height: 1.6; max-width: 320px; }
+    .features { margin-top: 48px; display: flex; flex-direction: column; gap: 16px; max-width: 320px; }
+    .feature-item { display: flex; align-items: center; gap: 14px; }
+    .feature-icon { font-size: 24px; width: 32px; text-align: center; flex-shrink: 0; }
+    .feature-text { font-size: 13px; color: var(--text-secondary); }
+    .feature-text strong { color: var(--text-primary); display: block; font-size: 14px; }
+    .login-title { font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+    .login-subtitle { color: var(--text-secondary); font-size: 13px; margin-bottom: 32px; }
+    .forgot-link { font-size: 12px; color: var(--text-muted); text-align: right; display: block; margin-top: -12px; margin-bottom: 20px; }
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+      .login-left { display: none; }
+      .login-right { width: 100%; padding: 32px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-left">
+    <div class="hero-logo">🔐</div>
+    <div class="hero-title">SECURE<br><span class="hero-accent">CLOUD</span></div>
+    <div class="hero-subtitle">
+      Hybrid Cryptography File Sharing System<br>
+      AES-256-GCM · RSA-2048-OAEP · SHA-256 · Digital Signatures
+    </div>
+    <div class="features">
+      <div class="feature-item">
+        <span class="feature-icon">🔒</span>
+        <div class="feature-text">
+          <strong>Military-Grade Encryption</strong>
+          AES-256-GCM file encryption with unique keys per file
+        </div>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">🛡️</span>
+        <div class="feature-text">
+          <strong>Integrity Verification</strong>
+          SHA-256 hashing detects any tampering instantly
+        </div>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">✍️</span>
+        <div class="feature-text">
+          <strong>Digital Signatures</strong>
+          RSA-SHA256 verifies authenticity before decryption
+        </div>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">📦</span>
+        <div class="feature-text">
+          <strong>Secure Package Sharing</strong>
+          Share .secure files via WhatsApp, email, or USB
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="login-right">
+    <div class="login-card">
+      <h1 class="login-title">Welcome back</h1>
+      <p class="login-subtitle">Sign in to your secure account</p>
+
+      <div id="login-alert" class="hidden"></div>
+
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label" for="email">Email Address</label>
+          <input type="email" class="form-control" id="email" placeholder="your@email.com" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input type="password" class="form-control" id="password" placeholder="Your password" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 btn-lg" id="login-btn">
+          <span id="btn-text">Sign In Securely</span>
+          <span id="btn-spinner" class="spinner hidden"></span>
+        </button>
+      </form>
+
+      <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-color); text-align: center;">
+        <p style="font-size: 12px; color: var(--text-muted);">
+          Don't have an account? <strong style="color: var(--text-secondary);">Contact your administrator for an invitation.</strong>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    // Redirect if already logged in
+    const token = localStorage.getItem('sc_token');
+    if (token) window.location.href = '/dashboard.html';
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const alert = document.getElementById('login-alert');
+      const btn = document.getElementById('login-btn');
+      const spinner = document.getElementById('btn-spinner');
+      const btnText = document.getElementById('btn-text');
+
+      alert.className = 'hidden';
+      btn.disabled = true;
+      spinner.classList.remove('hidden');
+      btnText.textContent = 'Signing in...';
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      try {
+        const data = await API.post('/auth/login', { email, password });
+        API.setToken(data.token);
+        localStorage.setItem('sc_user', JSON.stringify(data.user));
+        window.location.href = '/dashboard.html';
+      } catch (err) {
+        alert.className = 'alert alert-danger';
+        alert.textContent = '❌ ' + err.message;
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = 'Sign In Securely';
+      }
+    });
+  </script>
+</body>
+</html>

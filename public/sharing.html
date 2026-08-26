@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shared By Me — Secure Cloud</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body>
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn">☰</button>
+          <h1 class="page-title">🤝 File Sharing (Shared By Me)</h1>
+        </div>
+        <span class="badge badge-cyan">MODULE 3</span>
+      </header>
+      <div class="page-container">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title font-title">🤝 Shared Files Listing</div>
+            <a href="/my-files.html" class="btn btn-secondary btn-sm">📁 Select File to Share</a>
+          </div>
+          
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>File</th>
+                  <th>Recipient</th>
+                  <th>Permission</th>
+                  <th>Shared Date</th>
+                  <th>Expiration</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="shares-table">
+                <tr><td colspan="7" class="table-empty"><div class="spinner"></div> Loading shares...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script>
+    requireAuth();
+    document.getElementById('sidebar-placeholder').innerHTML = renderSidebar();
+    initSidebar('sharing');
+
+    async function loadShares() {
+      try {
+        const data = await API.get('/sharing/by-me');
+        const shares = data.shares || [];
+
+        const tbody = document.getElementById('shares-table');
+        if (shares.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="table-empty">You haven\'t shared any files yet. <a href="/my-files.html" style="color:var(--accent-cyan)">Share from My Files →</a></td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = shares.map(s => `
+          <tr>
+            <td>
+              <div class="d-flex align-center gap-8">
+                <span>${getMimeIcon(s.mime_type)}</span>
+                <div>
+                  <div style="font-weight:600; color: var(--text-primary);">${s.original_filename}</div>
+                  <div style="font-size:11px; color: var(--text-muted);">${formatBytes(s.original_size)}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div>
+                <div class="fw-medium">${s.recipient_name}</div>
+                <div style="font-size: 11px; color: var(--text-muted);">${s.recipient_email}</div>
+              </div>
+            </td>
+            <td><span class="badge badge-cyan">${getPermissionLabel(s.permission)}</span></td>
+            <td><span class="text-muted" title="${formatDate(s.created_at)}">${timeAgo(s.created_at)}</span></td>
+            <td><span class="text-muted">${s.expires_at ? formatDate(s.expires_at) : 'Never'}</span></td>
+            <td>${getStatusBadge(s.effective_status)}</td>
+            <td>
+              ${s.effective_status === 'active' ? `
+                <button class="btn btn-danger btn-sm" onclick="revokeShare('${s.share_id}')">Revoke Access</button>
+              ` : `
+                <span class="text-muted">—</span>
+              `}
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        document.getElementById('shares-table').innerHTML = `<tr><td colspan="7" class="table-empty text-danger">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function revokeShare(shareId) {
+      if (!confirm('Are you sure you want to revoke access? The recipient will instantly lose access to preview/download.')) return;
+      try {
+        await API.patch(`/sharing/${shareId}/revoke`);
+        showToast('Access revoked successfully!', 'success');
+        loadShares();
+      } catch (err) {
+        showToast('Revocation failed: ' + err.message, 'error');
+      }
+    }
+
+    loadShares();
+  </script>
+</body>
+</html>

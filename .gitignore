@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Environment Variables
+.env
+.env.local
+.env.production
+!.env.example
+
+# Uploaded/temporary files
+uploads/
+temp/
+storage/
+storage_vault/
+*.enc
+*.tmp
+
+# Private keys (never commit)
+*.pem
+*.key
+private_key*
+server_private*
+
+# Database
+database.sqlite
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Build output
+dist/
+build/
+
+# Test coverage
+coverage/

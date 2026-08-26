@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — Secure Cloud</title>
+  <meta name="description" content="Accept your invitation and create your Secure Cloud account">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .register-wrap { width: 100%; max-width: 480px; }
+    .register-header { text-align: center; margin-bottom: 32px; }
+    .register-logo { font-size: 40px; display: block; margin-bottom: 12px; }
+    .register-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); padding: 36px; box-shadow: var(--shadow-card); }
+    .invitation-info { background: var(--accent-cyan-dim); border: 1px solid var(--border-light); border-radius: var(--border-radius-sm); padding: 16px; margin-bottom: 24px; font-size: 13px; color: var(--text-secondary); }
+    .invitation-info strong { color: var(--text-primary); display: block; font-size: 15px; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="register-wrap">
+    <div class="register-header">
+      <span class="register-logo">🔐</span>
+      <h1 style="font-size: 22px; font-weight: 800; color: var(--text-primary);">SECURE CLOUD</h1>
+      <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">Accept Invitation</p>
+    </div>
+
+    <div class="register-card">
+      <div id="loading-state" style="text-align:center; padding: 20px;">
+        <div class="spinner spinner-lg" style="margin: 0 auto 16px;"></div>
+        <p class="text-muted">Validating invitation...</p>
+      </div>
+
+      <div id="error-state" class="hidden">
+        <div class="alert alert-danger" id="inv-error"></div>
+        <a href="/login.html" class="btn btn-secondary w-100">Go to Login</a>
+      </div>
+
+      <div id="register-form-container" class="hidden">
+        <div class="invitation-info">
+          <strong id="inv-name">Loading...</strong>
+          <span id="inv-email"></span>
+          <span style="display:block; margin-top: 4px; color: var(--accent-cyan);" id="inv-role"></span>
+        </div>
+
+        <div id="register-alert" class="hidden"></div>
+
+        <form id="register-form">
+          <input type="hidden" id="inv-token">
+          <div class="form-group">
+            <label class="form-label" for="password">Create Password</label>
+            <input type="password" class="form-control" id="password" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="confirm_password">Confirm Password</label>
+            <input type="password" class="form-control" id="confirm_password" placeholder="Repeat your password" required autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-primary w-100 btn-lg" id="submit-btn">
+            <span id="btn-text">Create Account & Join</span>
+            <span id="btn-spinner" class="spinner hidden"></span>
+          </button>
+        </form>
+
+        <p style="font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 16px;">
+          An RSA-2048 key pair will be generated for your account upon registration.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+
+    async function init() {
+      if (!token) {
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('error-state').classList.remove('hidden');
+        document.getElementById('inv-error').textContent = '❌ Invalid invitation link. No token provided.';
+        return;
+      }
+
+      try {
+        const data = await API.get(`/members/invitations/${token}`);
+        document.getElementById('inv-name').textContent = data.invitation.full_name;
+        document.getElementById('inv-email').textContent = data.invitation.email;
+        document.getElementById('inv-role').textContent = '🏷️ Role: ' + data.invitation.role.toUpperCase();
+        document.getElementById('inv-token').value = token;
+
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('register-form-container').classList.remove('hidden');
+      } catch (err) {
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('error-state').classList.remove('hidden');
+        document.getElementById('inv-error').textContent = '❌ ' + err.message;
+      }
+    }
+
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const alertEl = document.getElementById('register-alert');
+      const btn = document.getElementById('submit-btn');
+      const spinner = document.getElementById('btn-spinner');
+      const btnText = document.getElementById('btn-text');
+
+      alertEl.className = 'hidden';
+      btn.disabled = true;
+      spinner.classList.remove('hidden');
+      btnText.textContent = 'Creating account...';
+
+      try {
+        await API.post('/members/register', {
+          token: document.getElementById('inv-token').value,
+          password: document.getElementById('password').value,
+          confirm_password: document.getElementById('confirm_password').value,
+        });
+        alertEl.className = 'alert alert-success';
+        alertEl.textContent = '✅ Account created successfully! Redirecting to login...';
+        setTimeout(() => window.location.href = '/login.html', 2000);
+      } catch (err) {
+        alertEl.className = 'alert alert-danger';
+        alertEl.textContent = '❌ ' + err.message;
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = 'Create Account & Join';
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>

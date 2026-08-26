@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile — Secure Cloud</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body>
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn">☰</button>
+          <h1 class="page-title">👤 My Profile</h1>
+        </div>
+      </header>
+
+      <div class="page-container" style="max-width: 800px;">
+        <div class="card mb-24">
+          <div class="card-header">
+            <div class="card-title">👤 Account Information</div>
+          </div>
+          
+          <div id="profile-alert" class="hidden"></div>
+
+          <form id="profile-form">
+            <div class="form-group">
+              <label class="form-label">Email Address (Read-only)</label>
+              <input type="email" id="profile-email" class="form-control" readonly style="background: var(--bg-primary); cursor: not-allowed;">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="profile-name">Full Name</label>
+              <input type="text" id="profile-name" class="form-control" required placeholder="John Doe">
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); margin: 24px 0; padding-top: 24px;">
+              <h4 style="font-size: 14px; font-weight:700; margin-bottom: 16px; color: var(--accent-cyan); text-transform:uppercase; letter-spacing:1px;">Change Password</h4>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="profile-current-pass">Current Password</label>
+              <input type="password" id="profile-current-pass" class="form-control" placeholder="Enter current password to make changes">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="profile-new-pass">New Password</label>
+              <input type="password" id="profile-new-pass" class="form-control" placeholder="Minimum 8 characters">
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="save-profile-btn">💾 Save Changes</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script>
+    const user = requireAuth();
+    document.getElementById('sidebar-placeholder').innerHTML = renderSidebar();
+    initSidebar('profile');
+
+    async function loadProfile() {
+      try {
+        const data = await API.get('/auth/me');
+        document.getElementById('profile-email').value = data.user.email;
+        document.getElementById('profile-name').value = data.user.full_name;
+      } catch (err) {
+        showToast('Failed to load profile: ' + err.message, 'error');
+      }
+    }
+
+    document.getElementById('profile-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const alert = document.getElementById('profile-alert');
+      const btn = document.getElementById('save-profile-btn');
+
+      alert.className = 'hidden';
+      btn.disabled = true;
+      btn.textContent = '⏳ Saving...';
+
+      const name = document.getElementById('profile-name').value.trim();
+      const currentPass = document.getElementById('profile-current-pass').value;
+      const newPass = document.getElementById('profile-new-pass').value;
+
+      const payload = { full_name: name };
+      if (currentPass || newPass) {
+        if (!currentPass || !newPass) {
+          alert.className = 'alert alert-danger';
+          alert.textContent = '❌ Both current and new passwords must be provided to change your password.';
+          btn.disabled = false;
+          btn.textContent = '💾 Save Changes';
+          return;
+        }
+        payload.current_password = currentPass;
+        payload.new_password = newPass;
+      }
+
+      try {
+        await API.put('/auth/me', payload);
+        
+        // Update user locally in case name changed
+        const localUser = getCurrentUser();
+        localUser.full_name = name;
+        setCurrentUser(localUser);
+        
+        showToast('Profile updated successfully!', 'success');
+        alert.className = 'alert alert-success';
+        alert.textContent = '✅ Profile updated successfully.';
+        
+        // Clear passwords fields
+        document.getElementById('profile-current-pass').value = '';
+        document.getElementById('profile-new-pass').value = '';
+        
+        // Reload details
+        await loadProfile();
+        initSidebar('profile');
+
+      } catch (err) {
+        alert.className = 'alert alert-danger';
+        alert.textContent = '❌ ' + err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Save Changes';
+      }
+    });
+
+    loadProfile();
+  </script>
+</body>
+</html>

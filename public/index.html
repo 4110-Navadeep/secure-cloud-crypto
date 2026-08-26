@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Cloud — Redirecting...</title>
+  <script>
+    (async () => {
+      try {
+        const r = await fetch('/api/auth/setup-status');
+        const d = await r.json();
+        if (d.setupRequired) {
+          window.location.href = '/setup.html';
+        } else {
+          const token = localStorage.getItem('sc_token');
+          window.location.href = token ? '/dashboard.html' : '/login.html';
+        }
+      } catch {
+        window.location.href = '/login.html';
+      }
+    })();
+  </script>
+</head>
+<body style="background:#050d1a; color:#e2e8f0; font-family:Inter,sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0;">
+  <p>Loading Secure Cloud...</p>
+</body>
+</html>

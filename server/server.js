@@ -1,0 +1,165 @@
+'use strict';
+require('dotenv').config();
+
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const path = require('path');
+const rateLimit = require('express-rate-limit');
+
+const config = require('./config/config');
+const { testConnection } = require('./database/db');
+const { runMigrations } = require('./database/migrate');
+
+// Routes
+const authRoutes = require('./routes/auth');
+const memberRoutes = require('./routes/members');
+const fileRoutes = require('./routes/files');
+const sharingRoutes = require('./routes/sharing');
+const externalPackageRoutes = require('./routes/externalPackage');
+const securityRoutes = require('./routes/security');
+const performanceRoutes = require('./routes/performance');
+
+const app = express();
+
+// ---------------------------------------------------------------------------
+// Security Headers
+// ---------------------------------------------------------------------------
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameSrc: ["'self'", "blob:"],
+    },
+  },
+}));
+
+// ---------------------------------------------------------------------------
+// CORS
+// ---------------------------------------------------------------------------
+app.use(cors({
+  origin: config.app.url,
+  credentials: true,
+}));
+
+// ---------------------------------------------------------------------------
+// Body Parsing
+// ---------------------------------------------------------------------------
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
+
+// ---------------------------------------------------------------------------
+// Global Rate Limit
+// ---------------------------------------------------------------------------
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+});
+app.use('/api', globalLimiter);
+
+// ---------------------------------------------------------------------------
+// Static Files
+// ---------------------------------------------------------------------------
+app.use(express.static(path.join(__dirname, '..', 'public'), {
+  index: false,
+  maxAge: '1h',
+}));
+
+// ---------------------------------------------------------------------------
+// Health Check
+// ---------------------------------------------------------------------------
+app.get('/health', async (req, res) => {
+  try {
+    await testConnection();
+    res.json({ status: 'ok', database: 'connected', timestamp: new Date().toISOString() });
+  } catch (err) {
+    res.status(503).json({ status: 'error', database: 'disconnected', message: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// API Routes
+// ---------------------------------------------------------------------------
+app.use('/api/auth', authRoutes);
+app.use('/api/members', memberRoutes);
+app.use('/api/files', fileRoutes);
+app.use('/api/sharing', sharingRoutes);
+app.use('/api/external-package', externalPackageRoutes);
+app.use('/api/security', securityRoutes);
+app.use('/api/performance', performanceRoutes);
+
+// ---------------------------------------------------------------------------
+// SPA Fallback — serve index.html for all non-API routes
+// ---------------------------------------------------------------------------
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  // Try to serve specific HTML files
+  const htmlFile = req.path === '/' ? 'index.html' : req.path.slice(1);
+  const fullPath = path.join(__dirname, '..', 'public', htmlFile);
+  res.sendFile(fullPath, err => {
+    if (err) {
+      res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Error Handler
+// ---------------------------------------------------------------------------
+app.use((err, req, res, next) => {
+  console.error('[SERVER] Unhandled error:', err);
+
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: `File too large. Maximum size is ${config.upload.maxFileSizeMB} MB.` });
+  }
+  if (err.message && err.message.includes('File type')) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  res.status(500).json({ error: 'An internal server error occurred' });
+});
+
+// ---------------------------------------------------------------------------
+// Startup
+// ---------------------------------------------------------------------------
+async function start() {
+  try {
+    // Validate required env vars
+    if (!config.jwt.secret) throw new Error('JWT_SECRET is not set');
+    if (!config.app.secret) throw new Error('APPLICATION_SECRET is not set');
+    if (!config.db.user) throw new Error('DB_USER is not set');
+
+    // Test DB connection
+    await testConnection();
+    console.log('[DB] Connected to MySQL successfully');
+
+    // Run migrations
+    await runMigrations();
+
+    const PORT = config.app.port;
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`[SERVER] Secure Cloud running on http://0.0.0.0:${PORT}`);
+      console.log(`[SERVER] Environment: ${config.app.nodeEnv}`);
+    });
+  } catch (err) {
+    console.error('[SERVER] Fatal startup error:', err.message);
+    process.exit(1);
+  }
+}
+
+start();
+
+module.exports = app; // for testing

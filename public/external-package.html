@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open Secure Package — Secure Cloud</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <style>
+    .verify-banner {
+      padding: 16px;
+      border-radius: var(--border-radius-sm);
+      text-align: center;
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .banner-VERIFIED { background: var(--success-dim); color: var(--success); border: 1px solid rgba(0, 230, 118, 0.3); }
+    .banner-TAMPERED { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(255, 23, 68, 0.3); }
+    .banner-INVALID { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(255, 23, 68, 0.3); }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn">☰</button>
+          <h1 class="page-title">📦 Open Secure Package</h1>
+        </div>
+        <span class="badge badge-cyan">EXTERNAL WORKFLOW</span>
+      </header>
+
+      <div class="page-container">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <!-- Uploader / Package Input -->
+          <div>
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">📥 Upload .secure File</div>
+              </div>
+              <p class="text-muted mb-16" style="font-size:13px;">
+                Have you received a <span class="mono">.secure</span> package externally (via WhatsApp, Telegram, USB, etc.)? Upload it here to check if it's genuine and decrypt its contents.
+              </p>
+
+              <div class="upload-zone" id="pkg-upload-zone">
+                <span class="upload-icon">📦</span>
+                <div class="upload-title">Drop your .secure package here</div>
+                <div class="upload-hint">or click to browse</div>
+                <input type="file" id="pkg-file-input" accept=".secure">
+              </div>
+
+              <div id="pkg-file-info" class="hidden mt-16" style="padding:14px; background:var(--bg-input); border-radius: var(--border-radius-sm); border:1px solid var(--border-color);">
+                <div class="d-flex align-center gap-12">
+                  <span style="font-size:28px;">📦</span>
+                  <div>
+                    <div style="font-weight:600;" id="pkg-file-name">—</div>
+                    <div style="font-size:12px; color:var(--text-muted);" id="pkg-file-size">—</div>
+                  </div>
+                </div>
+              </div>
+
+              <button class="btn btn-primary w-100 btn-lg mt-16" id="pkg-verify-btn" disabled>
+                🛡️ Verify &amp; Unlock Package
+              </button>
+            </div>
+          </div>
+
+          <!-- Decryption Screen -->
+          <div>
+            <div class="card" id="pkg-result-card" style="display:none;">
+              <div class="card-header">
+                <div class="card-title">📝 Verification Status</div>
+              </div>
+
+              <div id="pkg-banner" class="verify-banner">VERIFYING</div>
+
+              <div class="steps-container">
+                <div class="step-item" id="pkg-step-detect">
+                  <span class="step-icon">📦</span>
+                  <span class="step-text">PACKAGE DETECTED</span>
+                  <span id="pkg-step-detect-status" style="margin-left: auto; font-size:12px; color:var(--text-muted);">—</span>
+                </div>
+                <div class="step-item" id="pkg-step-sig">
+                  <span class="step-icon">✍️</span>
+                  <span class="step-text">DIGITAL SIGNATURE VERIFICATION</span>
+                  <span id="pkg-step-sig-status" style="margin-left: auto; font-size:12px; color:var(--text-muted);">—</span>
+                </div>
+                <div class="step-item" id="pkg-step-integrity">
+                  <span class="step-icon">🔍</span>
+                  <span class="step-text">INTEGRITY VERIFICATION (SHA-256)</span>
+                  <span id="pkg-step-integrity-status" style="margin-left: auto; font-size:12px; color:var(--text-muted);">—</span>
+                </div>
+              </div>
+
+              <!-- Passphrase unlock -->
+              <div id="pkg-unlock-section" class="hidden mt-24">
+                <div style="border-top:1px solid var(--border-color); padding-top:16px; margin-bottom:16px;">
+                  <h4 style="font-size:14px; font-weight:700; margin-bottom:6px;">🔓 Enter Decryption Key / Passphrase</h4>
+                  <p class="text-muted" style="font-size:12px;">This package is verified authentic and unaltered. Enter the passphrase designated by the sender to retrieve the original file.</p>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Decryption Passphrase</label>
+                  <input type="password" id="pkg-passphrase" class="form-control" placeholder="Enter passphrase">
+                </div>
+
+                <button class="btn btn-success w-100" id="pkg-decrypt-btn">🔓 Decrypt Package</button>
+              </div>
+
+              <!-- Metadata displays -->
+              <div id="pkg-meta-section" class="hidden mt-16" style="background:var(--bg-input); border-radius: var(--border-radius-sm); border:1px solid var(--border-color); padding:14px; font-size:13px;">
+                <div><span style="color:var(--text-muted)">File:</span> <strong id="meta-filename"></strong></div>
+                <div><span style="color:var(--text-muted)">Type:</span> <span id="meta-mimetype"></span></div>
+                <div><span style="color:var(--text-muted)">Hash:</span> <div class="hash-display mt-8" id="meta-sha256"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script>
+    // Anyone can access this page
+    document.getElementById('sidebar-placeholder').innerHTML = renderSidebar();
+    initSidebar('external-package');
+
+    let packageBlob = null;
+    let pkgToken = null;
+
+    const fileInput = document.getElementById('pkg-file-input');
+    const uploadZone = document.getElementById('pkg-upload-zone');
+    const verifyBtn = document.getElementById('pkg-verify-btn');
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) selectPackage(file);
+    });
+
+    uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) selectPackage(file);
+    });
+
+    function selectPackage(file) {
+      packageBlob = file;
+      document.getElementById('pkg-file-info').classList.remove('hidden');
+      document.getElementById('pkg-file-name').textContent = file.name;
+      document.getElementById('pkg-file-size').textContent = formatBytes(file.size);
+      verifyBtn.disabled = false;
+      document.getElementById('pkg-result-card').style.display = 'none';
+      document.getElementById('pkg-unlock-section').classList.add('hidden');
+      document.getElementById('pkg-meta-section').classList.add('hidden');
+    }
+
+    function setStep(id, state, text) {
+      const el = document.getElementById(id);
+      el.className = `step-item ${state}`;
+      document.getElementById(id + '-status').textContent = text;
+    }
+
+    verifyBtn.addEventListener('click', async () => {
+      if (!packageBlob) return;
+
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = '⏳ Verifying...';
+      document.getElementById('pkg-result-card').style.display = 'block';
+
+      // Reset
+      ['pkg-step-detect', 'pkg-step-sig', 'pkg-step-integrity'].forEach(s => {
+        document.getElementById(s).className = 'step-item';
+        document.getElementById(s + '-status').textContent = '—';
+      });
+
+      const formData = new FormData();
+      formData.append('package', packageBlob);
+
+      try {
+        setStep('pkg-step-detect', 'active', '⏳');
+        const res = await fetch('/api/external-package/verify', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (res.status === 400 && data.error === 'INVALID_PACKAGE') {
+          setStep('pkg-step-detect', 'error', '✗ Invalid');
+          updateBanner('VERIFICATION FAILED', 'banner-TAMPERED');
+          showToast('Invalid secure package envelope', 'error');
+          return;
+        }
+
+        setStep('pkg-step-detect', 'done', '✓ Detected');
+
+        if (res.status === 409) {
+          if (data.error === 'INTEGRITY_FAILED') {
+            setStep('pkg-step-integrity', 'error', '✗ FAILED');
+            updateBanner('TAMPERING DETECTED', 'banner-TAMPERED');
+            showToast('Package integrity check failed. The package has been tampered!', 'error');
+            return;
+          }
+          if (data.error === 'SIGNATURE_INVALID') {
+            setStep('pkg-step-integrity', 'done', '✓ Matches');
+            setStep('pkg-step-sig', 'error', '✗ INVALID');
+            updateBanner('DIGITAL SIGNATURE INVALID', 'banner-INVALID');
+            showToast('Signature validation failed. Untrusted source.', 'error');
+            return;
+          }
+        }
+
+        if (!res.ok) throw new Error(data.message || 'Verification failed');
+
+        // Success
+        setStep('pkg-step-sig', 'done', '✓ VERIFIED');
+        setStep('pkg-step-integrity', 'done', '✓ INTEGRITY VERIFIED');
+        updateBanner('VERIFIED', 'banner-VERIFIED');
+        showToast('Digital signature and integrity verified successfully!', 'success');
+
+        pkgToken = data.packageToken;
+
+        // Show metadata
+        document.getElementById('meta-filename').textContent = data.originalFilename;
+        document.getElementById('meta-mimetype').textContent = data.mimeType;
+        document.getElementById('meta-sha256').textContent = data.sha256Hash;
+        document.getElementById('pkg-meta-section').classList.remove('hidden');
+
+        // Show decrypt inputs
+        document.getElementById('pkg-unlock-section').classList.remove('hidden');
+
+      } catch (err) {
+        updateBanner('VERIFICATION FAILED', 'banner-TAMPERED');
+        showToast(err.message, 'error');
+      } finally {
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = '🛡️ Verify & Unlock Package';
+      }
+    });
+
+    function updateBanner(text, className) {
+      const banner = document.getElementById('pkg-banner');
+      banner.className = `verify-banner ${className}`;
+      banner.textContent = text;
+    }
+
+    document.getElementById('pkg-decrypt-btn').addEventListener('click', async () => {
+      const pass = document.getElementById('pkg-passphrase').value;
+      if (!pass) {
+        showToast('Please enter the decryption passphrase', 'warning');
+        return;
+      }
+
+      const decBtn = document.getElementById('pkg-decrypt-btn');
+      decBtn.disabled = true;
+      decBtn.textContent = '⏳ Decrypting...';
+
+      try {
+        const response = await fetch('/api/external-package/decrypt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ packageToken: pkgToken, passphrase: pass })
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.message || 'Decryption failed');
+        }
+
+        const blob = await response.blob();
+        const contentDisp = response.headers.get('Content-Disposition');
+        let filename = 'decrypted_output';
+        if (contentDisp && contentDisp.includes('filename=')) {
+          filename = contentDisp.split('filename=')[1].replace(/"/g, '');
+        }
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+        showToast('Decryption successful! File downloaded.', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        decBtn.disabled = false;
+        decBtn.textContent = '🔓 Decrypt Package';
+      }
+    });
+  </script>
+</body>
+</html>

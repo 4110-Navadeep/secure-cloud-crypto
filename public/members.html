@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Members — Secure Cloud</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body>
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn">☰</button>
+          <h1 class="page-title">👥 Manage Members</h1>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openInviteModal()">+ Invite Member</button>
+      </header>
+
+      <div class="page-container">
+        
+        <!-- Members List -->
+        <div class="card mb-24">
+          <div class="card-header">
+            <div class="card-title">👥 Active Members</div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Joined Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="members-table">
+                <tr><td colspan="6" class="table-empty"><div class="spinner"></div> Loading members...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Invitations List -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📨 Sent Invitations</div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Invitee</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Sender</th>
+                  <th>Status</th>
+                  <th>Expires At</th>
+                  <th>Date Sent</th>
+                </tr>
+              </thead>
+              <tbody id="invitations-table">
+                <tr><td colspan="7" class="table-empty"><div class="spinner"></div> Loading invitations...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Invite Modal -->
+  <div class="modal-overlay" id="invite-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">📨 Send Member Invitation</div>
+        <button class="modal-close" onclick="closeInviteModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted" style="margin-bottom: 16px; font-size: 13px;">Enter details to generate and send a secure signup link.</p>
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-control" id="invite-name" placeholder="John Doe">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-control" id="invite-email" placeholder="john@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <select class="form-control" id="invite-role">
+            <option value="member" selected>Member</option>
+            <option value="admin">Administrator</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeInviteModal()">Cancel</button>
+        <button class="btn btn-primary" id="confirm-invite-btn" onclick="sendInvite()">✉️ Send Invitation</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script>
+    requireAdmin();
+    document.getElementById('sidebar-placeholder').innerHTML = renderSidebar();
+    initSidebar('members');
+
+    async function loadMembersAndInvitations() {
+      try {
+        const [membersData, invitesData] = await Promise.all([
+          API.get('/members'),
+          API.get('/members/invitations')
+        ]);
+
+        const members = membersData.members || [];
+        const invites = invitesData.invitations || [];
+
+        // Render Members
+        const mBody = document.getElementById('members-table');
+        mBody.innerHTML = members.map(m => `
+          <tr>
+            <td><strong class="text-primary">${m.full_name}</strong></td>
+            <td><span class="text-secondary">${m.email}</span></td>
+            <td><span class="badge ${m.role === 'admin' ? 'badge-cyan' : 'badge-info'}">${m.role.toUpperCase()}</span></td>
+            <td>${getStatusBadge(m.status)}</td>
+            <td><span class="text-muted">${formatDateShort(m.created_at)}</span></td>
+            <td>
+              ${m.id === getCurrentUser().id ? `
+                <span class="text-muted">You</span>
+              ` : `
+                <button class="btn ${m.status === 'active' ? 'btn-danger' : 'btn-success'} btn-sm" onclick="toggleMemberStatus('${m.id}', '${m.status}')">
+                  ${m.status === 'active' ? 'Deactivate' : 'Activate'}
+                </button>
+              `}
+            </td>
+          </tr>
+        `).join('');
+
+        // Render Invitations
+        const iBody = document.getElementById('invitations-table');
+        if (invites.length === 0) {
+          iBody.innerHTML = '<tr><td colspan="7" class="table-empty">No invitations sent yet.</td></tr>';
+          return;
+        }
+
+        iBody.innerHTML = invites.map(i => `
+          <tr>
+            <td><strong>${i.full_name}</strong></td>
+            <td><span class="text-secondary">${i.email}</span></td>
+            <td><span class="badge badge-muted">${i.role.toUpperCase()}</span></td>
+            <td><span class="text-secondary">${i.invited_by_name || 'System'}</span></td>
+            <td>${getStatusBadge(i.status)}</td>
+            <td><span class="text-muted">${formatDate(i.expires_at)}</span></td>
+            <td><span class="text-muted">${formatDateShort(i.created_at)}</span></td>
+          </tr>
+        `).join('');
+
+      } catch (err) {
+        showToast('Failed to load page data: ' + err.message, 'error');
+      }
+    }
+
+    function openInviteModal() {
+      document.getElementById('invite-name').value = '';
+      document.getElementById('invite-email').value = '';
+      document.getElementById('invite-role').value = 'member';
+      document.getElementById('invite-modal').classList.add('active');
+    }
+
+    function closeInviteModal() {
+      document.getElementById('invite-modal').classList.remove('active');
+    }
+
+    async function sendInvite() {
+      const name = document.getElementById('invite-name').value.trim();
+      const email = document.getElementById('invite-email').value.trim();
+      const role = document.getElementById('invite-role').value;
+      const btn = document.getElementById('confirm-invite-btn');
+
+      if (!name || !email) {
+        showToast('Please fill in name and email fields', 'warning');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Sending...';
+
+      try {
+        await API.post('/members/invite', { full_name: name, email, role });
+        showToast(`Invitation sent to ${email}`, 'success');
+        closeInviteModal();
+        loadMembersAndInvitations();
+      } catch (err) {
+        showToast('Failed to send invite: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✉️ Send Invitation';
+      }
+    }
+
+    async function toggleMemberStatus(userId, currentStatus) {
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      if (!confirm(`Are you sure you want to change this member's status to ${newStatus}?`)) return;
+
+      try {
+        await API.patch(`/members/${userId}/status`, { status: newStatus });
+        showToast(`User status updated to ${newStatus}`, 'success');
+        loadMembersAndInvitations();
+      } catch (err) {
+        showToast('Failed to update user status: ' + err.message, 'error');
+      }
+    }
+
+    loadMembersAndInvitations();
+  </script>
+</body>
+</html>
