@@ -1,7 +1,7 @@
 'use strict';
 const jwt = require('jsonwebtoken');
 const config = require('../config/config');
-const { queryOne } = require('../database/db');
+const db = require('../database/db');
 const { logEvent, EventTypes, extractRequestMeta } = require('../services/auditService');
 
 /**
@@ -30,10 +30,7 @@ async function authenticate(req, res, next) {
     const decoded = jwt.verify(token, config.jwt.secret);
 
     // Fetch fresh user from DB to catch deactivated accounts
-    const user = await queryOne(
-      'SELECT id, full_name, email, role, status FROM users WHERE id = ?',
-      [decoded.id]
-    );
+    const user = db.users.findOne({ id: decoded.id });
 
     if (!user) {
       return res.status(401).json({ error: 'User account not found' });
@@ -42,7 +39,13 @@ async function authenticate(req, res, next) {
       return res.status(403).json({ error: 'Account is inactive' });
     }
 
-    req.user = user;
+    req.user = {
+      id: user.id,
+      full_name: user.full_name,
+      email: user.email,
+      role: user.role,
+      status: user.status
+    };
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {

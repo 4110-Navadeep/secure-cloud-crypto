@@ -1,75 +1,171 @@
 'use strict';
-const mysql = require('mysql2/promise');
+const fs = require('fs');
+const path = require('path');
 
-// ---------------------------------------------------------------------------
-// Port separation guard
-// ---------------------------------------------------------------------------
-// DB_PORT is for MySQL only. process.env.PORT is for Express only.
-// These must NEVER be mixed. The pool is created once and reused.
-// ---------------------------------------------------------------------------
+const STORAGE_DIR = path.join(__dirname, '..', '..', 'storage');
 
-let pool = null;
-
-function getPool() {
-  if (!pool) {
-    const dbHost = process.env.DB_HOST;
-    const dbPort = Number(process.env.DB_PORT || 3306);
-    const dbUser = process.env.DB_USER;
-    const dbPassword = process.env.DB_PASSWORD;
-    const dbName = process.env.DB_NAME;
-
-    // Hard-fail if DB_HOST is missing — never fall back to localhost
-    if (!dbHost) {
-      console.error('[DATABASE] Missing required environment variable: DB_HOST');
-      process.exit(1);
-    }
-    if (!dbUser) {
-      console.error('[DATABASE] Missing required environment variable: DB_USER');
-      process.exit(1);
-    }
-    if (!dbPassword) {
-      console.error('[DATABASE] Missing required environment variable: DB_PASSWORD');
-      process.exit(1);
-    }
-    if (!dbName) {
-      console.error('[DATABASE] Missing required environment variable: DB_NAME');
-      process.exit(1);
-    }
-    if (isNaN(dbPort) || dbPort < 1 || dbPort > 65535) {
-      console.error(`[DATABASE] Invalid DB_PORT "${process.env.DB_PORT}". Expected a numeric MySQL port such as 3306.`);
-      process.exit(1);
-    }
-
-    pool = mysql.createPool({
-      host: dbHost,
-      port: dbPort,
-      user: dbUser,
-      password: dbPassword,
-      database: dbName,
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
-      charset: 'utf8mb4',
-    });
+// Helper to ensure storage directory and files exist
+function initStorage() {
+  if (!fs.existsSync(STORAGE_DIR)) {
+    fs.mkdirSync(STORAGE_DIR, { recursive: true });
   }
-  return pool;
+
+  const defaultFiles = {
+    'users.json': '[]',
+    'members.json': '[]', // maps to invitations table
+    'files.json': '[]',
+    'shares.json': '[]', // maps to file_shares table
+    'access.json': '[]', // maps to file_keys table
+    'security_logs.json': '[]', // maps to audit_logs table
+    'performance_metrics.json': '[]',
+  };
+
+  for (const [filename, defaultContent] of Object.entries(defaultFiles)) {
+    const filePath = path.join(STORAGE_DIR, filename);
+    if (!fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, defaultContent, 'utf8');
+    }
+  }
 }
 
-async function query(sql, params) {
-  const conn = getPool();
-  const [rows] = await conn.execute(sql, params);
-  return rows;
+// Initialize storage immediately
+initStorage();
+
+// Read JSON file helper
+function readStore(filename) {
+  const filePath = path.join(STORAGE_DIR, filename);
+  try {
+    const data = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(data);
+  } catch (err) {
+    console.error(`[DB] Error reading ${filename}:`, err);
+    return [];
+  }
 }
 
-async function queryOne(sql, params) {
-  const rows = await query(sql, params);
-  return rows[0] || null;
+// Write JSON file helper
+function writeStore(filename, data) {
+  const filePath = path.join(STORAGE_DIR, filename);
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.error(`[DB] Error writing ${filename}:`, err);
+  }
 }
 
+// Generic Store class for simple query builder
+class Store {
+  constructor(filename) {
+    this.filename = filename;
+  }
+
+  getAll() {
+    return readStore(this.filename);
+  }
+
+  saveAll(data) {
+    writeStore(this.filename, data);
+  }
+
+  find(predicate) {
+    const list = this.getAll();
+    if (typeof predicate === 'function') {
+      return list.filter(predicate);
+    }
+    if (typeof predicate === 'object') {
+      return list.filter(item => {
+        return Object.entries(predicate).every(([key, value]) => item[key] === value);
+      });
+    }
+    return list;
+  }
+
+  findOne(predicate) {
+    const list = this.getAll();
+    if (typeof predicate === 'function') {
+      return list.find(predicate) || null;
+    }
+    if (typeof predicate === 'object') {
+      return list.find(item => {
+        return Object.entries(predicate).every(([key, value]) => item[key] === value);
+      }) || null;
+    }
+    return list[0] || null;
+  }
+
+  insert(item) {
+    const list = this.getAll();
+    const newItem = {
+      ...item,
+      created_at: item.created_at || new Date().toISOString(),
+      updated_at: item.updated_at || new Date().toISOString(),
+    };
+    list.push(newItem);
+    this.saveAll(list);
+    return newItem;
+  }
+
+  update(predicate, updates) {
+    const list = this.getAll();
+    let updatedCount = 0;
+    const isFn = typeof predicate === 'function';
+
+    const newList = list.map(item => {
+      const match = isFn ? predicate(item) : Object.entries(predicate).every(([key, value]) => item[key] === value);
+      if (match) {
+        updatedCount++;
+        return {
+          ...item,
+          ...updates,
+          updated_at: new Date().toISOString(),
+        };
+      }
+      return item;
+    });
+
+    if (updatedCount > 0) {
+      this.saveAll(newList);
+    }
+    return updatedCount;
+  }
+
+  delete(predicate) {
+    const list = this.getAll();
+    const isFn = typeof predicate === 'function';
+    const originalLen = list.length;
+
+    const newList = list.filter(item => {
+      const match = isFn ? predicate(item) : Object.entries(predicate).every(([key, value]) => item[key] === value);
+      return !match;
+    });
+
+    if (newList.length !== originalLen) {
+      this.saveAll(newList);
+    }
+    return originalLen - newList.length;
+  }
+}
+
+const usersStore = new Store('users.json');
+const membersStore = new Store('members.json');
+const filesStore = new Store('files.json');
+const sharesStore = new Store('shares.json');
+const accessStore = new Store('access.json');
+const securityLogsStore = new Store('security_logs.json');
+const performanceStore = new Store('performance_metrics.json');
+
+// Fake test connection helper for compatibility
 async function testConnection() {
-  const conn = await getPool().getConnection();
-  conn.release();
   return true;
 }
 
-module.exports = { getPool, query, queryOne, testConnection };
+module.exports = {
+  users: usersStore,
+  members: membersStore,
+  files: filesStore,
+  shares: sharesStore,
+  access: accessStore,
+  securityLogs: securityLogsStore,
+  performance: performanceStore,
+  testConnection,
+};

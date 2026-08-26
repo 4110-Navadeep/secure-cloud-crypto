@@ -13,7 +13,7 @@ const {
   sha256Hash,
 } = require('../crypto/cryptoService');
 const { logEvent, EventTypes, extractRequestMeta } = require('../services/auditService');
-const { query } = require('../database/db');
+const db = require('../database/db');
 
 // ---------------------------------------------------------------------------
 // Step 1: Parse and verify the .secure package
@@ -133,7 +133,7 @@ async function decryptPackage(req, res) {
     let tokenData;
     try {
       tokenData = JSON.parse(Buffer.from(packageToken, 'base64').toString('utf8'));
-    } catch {
+    } catch (err) {
       return res.status(400).json({ error: 'Invalid package token' });
     }
 
@@ -178,11 +178,18 @@ async function decryptPackage(req, res) {
     });
 
     // Record performance metrics
-    await query(
-      `INSERT INTO performance_metrics (id, user_id, operation, file_size, decryption_time_ms, total_processing_time_ms)
-       VALUES (?, ?, 'EXTERNAL_DECRYPT', ?, ?, ?)`,
-      [uuidv4(), req.user?.id || null, plaintext.length, tTotal, tTotal]
-    ).catch(() => {});
+    try {
+      db.performance.insert({
+        id: uuidv4(),
+        user_id: req.user?.id || null,
+        operation: 'EXTERNAL_DECRYPT',
+        file_size: plaintext.length,
+        decryption_time_ms: tTotal,
+        total_processing_time_ms: tTotal
+      });
+    } catch (perfErr) {
+      // ignore metrics saving errors
+    }
 
     // Stream the decrypted file to the client
     res.setHeader('Content-Disposition', `attachment; filename="${envelope.originalFilename}"`);

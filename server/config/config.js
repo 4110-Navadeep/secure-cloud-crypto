@@ -2,25 +2,12 @@
 require('dotenv').config();
 
 module.exports = {
-  db: {
-    // DB_HOST / DB_PORT are ONLY for MySQL. Never use process.env.PORT here.
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    charset: 'utf8mb4',
-  },
   jwt: {
     secret: process.env.JWT_SECRET,
     expiresIn: '24h',
   },
   app: {
     secret: process.env.APPLICATION_SECRET,
-    // PORT is ONLY for Express. Never use DB_PORT here.
     port: Number(process.env.PORT || 5000),
     url: process.env.APP_URL || 'http://localhost:5000',
     nodeEnv: process.env.NODE_ENV || 'development',

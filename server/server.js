@@ -137,22 +137,12 @@ app.use((err, req, res, next) => {
 // ---------------------------------------------------------------------------
 async function start() {
   try {
-    // -----------------------------------------------------------------------
-    // PORT separation:
-    //   process.env.PORT    → Express web server (provided by Render)
-    //   process.env.DB_PORT → MySQL database port (default 3306)
-    //   THESE MUST NEVER BE MIXED.
-    // -----------------------------------------------------------------------
     const EXPRESS_PORT = Number(process.env.PORT || 5000);
 
-    // Validate required env vars. DB_PORT is optional (defaults to 3306 in db.js).
+    // Validate required security env vars
     const requiredVars = [
       { name: 'JWT_SECRET',          val: config.jwt.secret },
       { name: 'APPLICATION_SECRET',  val: config.app.secret },
-      { name: 'DB_HOST',             val: config.db.host },
-      { name: 'DB_USER',             val: config.db.user },
-      { name: 'DB_PASSWORD',         val: config.db.password },
-      { name: 'DB_NAME',             val: config.db.database },
     ];
 
     for (const v of requiredVars) {
@@ -162,15 +152,13 @@ async function start() {
       }
     }
 
-    const dbPort = Number(process.env.DB_PORT || 3306);
-    console.log(`[DATABASE] Connecting to configured MySQL server at ${config.db.host}:${dbPort} ...`);
-
+    console.log('[DATABASE] Checking JSON file-based database connection...');
     await testConnection();
-    console.log('[DATABASE] MySQL connection successful.');
+    console.log('[DATABASE] File database initialized successfully.');
 
     await runMigrations();
 
-    // Express listens on process.env.PORT (provided by Render), NOT on DB_PORT
+    // Express listens on process.env.PORT (provided by Render)
     app.listen(EXPRESS_PORT, '0.0.0.0', () => {
       console.log(`[SERVER] Application started successfully. Listening on http://0.0.0.0:${EXPRESS_PORT}`);
       console.log(`[SERVER] Environment: ${config.app.nodeEnv}`);
@@ -181,6 +169,8 @@ async function start() {
   }
 }
 
-start();
+if (process.env.NODE_ENV !== 'test') {
+  start();
+}
 
 module.exports = app; // for testing

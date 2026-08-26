@@ -5,7 +5,7 @@
  */
 
 const { v4: uuidv4 } = require('uuid');
-const { query, queryOne } = require('../database/db');
+const db = require('../database/db');
 const { logEvent, EventTypes, extractRequestMeta } = require('../services/auditService');
 
 // ---------------------------------------------------------------------------
@@ -25,17 +25,11 @@ async function shareFile(req, res) {
     }
 
     // Verify file ownership
-    const file = await queryOne(
-      "SELECT id, original_filename, owner_id FROM files WHERE id = ? AND owner_id = ? AND status = 'active'",
-      [file_id, req.user.id]
-    );
+    const file = db.files.findOne({ id: file_id, owner_id: req.user.id, status: 'active' });
     if (!file) return res.status(404).json({ error: 'File not found or you are not the owner' });
 
     // Find recipient
-    const recipient = await queryOne(
-      "SELECT id, full_name, email FROM users WHERE email = ? AND status = 'active'",
-      [shared_with_email.toLowerCase()]
-    );
+    const recipient = db.users.findOne({ email: shared_with_email.toLowerCase(), status: 'active' });
     if (!recipient) return res.status(404).json({ error: 'No active user found with that email' });
 
     // Cannot share with yourself
@@ -44,25 +38,27 @@ async function shareFile(req, res) {
     }
 
     // Check if already shared
-    const existing = await queryOne(
-      "SELECT id FROM file_shares WHERE file_id = ? AND shared_with = ? AND status = 'active'",
-      [file_id, recipient.id]
-    );
+    const existing = db.shares.findOne({ file_id, shared_with: recipient.id, status: 'active' });
     if (existing) {
       // Update existing share
-      await query(
-        "UPDATE file_shares SET permission = ?, expires_at = ?, updated_at = NOW() WHERE id = ?",
-        [permission, expires_at || null, existing.id]
-      );
+      db.shares.update({ id: existing.id }, {
+        permission,
+        expires_at: expires_at || null,
+        updated_at: new Date().toISOString()
+      });
       return res.json({ message: `Share updated for ${recipient.email}` });
     }
 
     const shareId = uuidv4();
-    await query(
-      `INSERT INTO file_shares (id, file_id, shared_by, shared_with, permission, expires_at, status)
-       VALUES (?, ?, ?, ?, ?, ?, 'active')`,
-      [shareId, file_id, req.user.id, recipient.id, permission, expires_at || null]
-    );
+    db.shares.insert({
+      id: shareId,
+      file_id,
+      shared_by: req.user.id,
+      shared_with: recipient.id,
+      permission,
+      expires_at: expires_at || null,
+      status: 'active'
+    });
 
     await logEvent({
       userId: req.user.id,
@@ -75,7 +71,13 @@ async function shareFile(req, res) {
 
     res.status(201).json({
       message: `File shared with ${recipient.full_name} (${recipient.email})`,
-      share: { id: shareId, file_id, shared_with: recipient, permission, expires_at: expires_at || null },
+      share: {
+        id: shareId,
+        file_id,
+        shared_with: { id: recipient.id, full_name: recipient.full_name, email: recipient.email },
+        permission,
+        expires_at: expires_at || null
+      },
     });
   } catch (err) {
     console.error('[SHARE] Error:', err);
@@ -88,17 +90,23 @@ async function shareFile(req, res) {
 // ---------------------------------------------------------------------------
 
 async function sharedByMe(req, res) {
-  const shares = await query(
-    `SELECT fs.id AS share_id, fs.permission, fs.expires_at, fs.status, fs.created_at,
-            f.id AS file_id, f.original_filename, f.mime_type, f.original_size,
-            u.full_name AS recipient_name, u.email AS recipient_email
-     FROM file_shares fs
-     JOIN files f ON f.id = fs.file_id
-     JOIN users u ON u.id = fs.shared_with
-     WHERE fs.shared_by = ?
-     ORDER BY fs.created_at DESC`,
-    [req.user.id]
-  );
+  const shares = db.shares.find({ shared_by: req.user.id }).map(s => {
+    const file = db.files.findOne({ id: s.file_id });
+    const recipient = db.users.findOne({ id: s.shared_with });
+    return {
+      share_id: s.id,
+      permission: s.permission,
+      expires_at: s.expires_at,
+      status: s.status,
+      created_at: s.created_at,
+      file_id: s.file_id,
+      original_filename: file ? file.original_filename : 'Unknown File',
+      mime_type: file ? file.mime_type : null,
+      original_size: file ? file.original_size : 0,
+      recipient_name: recipient ? recipient.full_name : 'Deleted User',
+      recipient_email: recipient ? recipient.email : 'deleted@user.com'
+    };
+  });
 
   // Check expiration
   const now = new Date();
@@ -107,7 +115,7 @@ async function sharedByMe(req, res) {
     effective_status: s.status === 'revoked' ? 'revoked'
       : (s.expires_at && new Date(s.expires_at) < now) ? 'expired'
       : s.status,
-  }));
+  })).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   res.json({ shares: enriched });
 }
@@ -117,17 +125,25 @@ async function sharedByMe(req, res) {
 // ---------------------------------------------------------------------------
 
 async function sharedWithMe(req, res) {
-  const shares = await query(
-    `SELECT fs.id AS share_id, fs.permission, fs.expires_at, fs.status, fs.created_at,
-            f.id AS file_id, f.original_filename, f.mime_type, f.original_size, f.owner_id,
-            u.full_name AS owner_name, u.email AS owner_email
-     FROM file_shares fs
-     JOIN files f ON f.id = fs.file_id AND f.status = 'active'
-     JOIN users u ON u.id = fs.shared_by
-     WHERE fs.shared_with = ?
-     ORDER BY fs.created_at DESC`,
-    [req.user.id]
-  );
+  const shares = db.shares.find({ shared_with: req.user.id }).map(s => {
+    const file = db.files.findOne({ id: s.file_id, status: 'active' });
+    const owner = db.users.findOne({ id: s.shared_by });
+    if (!file) return null; // Only show active files
+    return {
+      share_id: s.id,
+      permission: s.permission,
+      expires_at: s.expires_at,
+      status: s.status,
+      created_at: s.created_at,
+      file_id: s.file_id,
+      original_filename: file.original_filename,
+      mime_type: file.mime_type,
+      original_size: file.original_size,
+      owner_id: file.owner_id,
+      owner_name: owner ? owner.full_name : 'System',
+      owner_email: owner ? owner.email : 'system@cloud.app'
+    };
+  }).filter(Boolean);
 
   const now = new Date();
   const enriched = shares.map(s => ({
@@ -135,7 +151,7 @@ async function sharedWithMe(req, res) {
     effective_status: s.status === 'revoked' ? 'revoked'
       : (s.expires_at && new Date(s.expires_at) < now) ? 'expired'
       : s.status,
-  }));
+  })).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   res.json({ shares: enriched });
 }
@@ -148,21 +164,20 @@ async function revokeAccess(req, res) {
   const meta = extractRequestMeta(req);
   const { share_id } = req.params;
 
-  const share = await queryOne(
-    `SELECT fs.*, f.owner_id FROM file_shares fs
-     JOIN files f ON f.id = fs.file_id
-     WHERE fs.id = ?`,
-    [share_id]
-  );
-
+  const share = db.shares.findOne({ id: share_id });
   if (!share) return res.status(404).json({ error: 'Share not found' });
+
+  const file = db.files.findOne({ id: share.file_id });
 
   // Only file owner or admin can revoke
   if (share.shared_by !== req.user.id && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Only the file owner can revoke access' });
   }
 
-  await query("UPDATE file_shares SET status = 'revoked', updated_at = NOW() WHERE id = ?", [share_id]);
+  db.shares.update({ id: share_id }, {
+    status: 'revoked',
+    updated_at: new Date().toISOString()
+  });
 
   await logEvent({
     userId: req.user.id,
@@ -180,10 +195,15 @@ async function revokeAccess(req, res) {
 // ---------------------------------------------------------------------------
 
 async function listShareableMembers(req, res) {
-  const members = await query(
-    "SELECT id, full_name, email, role FROM users WHERE status = 'active' AND id != ? ORDER BY full_name",
-    [req.user.id]
-  );
+  const members = db.users.find(u => u.status === 'active' && u.id !== req.user.id)
+    .map(m => ({
+      id: m.id,
+      full_name: m.full_name,
+      email: m.email,
+      role: m.role
+    }))
+    .sort((a, b) => a.full_name.localeCompare(b.full_name));
+
   res.json({ members });
 }
 

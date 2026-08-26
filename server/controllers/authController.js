@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const validator = require('validator');
 
-const { query, queryOne } = require('../database/db');
+const db = require('../database/db');
 const config = require('../config/config');
 const { generateRSAKeyPair, encryptPrivateKeyForStorage } = require('../crypto/cryptoService');
 const { logEvent, EventTypes, extractRequestMeta } = require('../services/auditService');
@@ -21,7 +21,7 @@ const { logEvent, EventTypes, extractRequestMeta } = require('../services/auditS
 async function setupAdmin(req, res) {
   try {
     // Check if any admin exists
-    const existing = await queryOne("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+    const existing = db.users.findOne({ role: 'admin' });
     if (existing) {
       return res.status(403).json({ error: 'Administrator account already exists. Setup is disabled.' });
     }
@@ -48,11 +48,16 @@ async function setupAdmin(req, res) {
     const { publicKey, privateKey } = generateRSAKeyPair();
     const encryptedPrivateKey = encryptPrivateKeyForStorage(privateKey, id);
 
-    await query(
-      `INSERT INTO users (id, full_name, email, password_hash, role, status, rsa_public_key, rsa_private_key_enc)
-       VALUES (?, ?, ?, ?, 'admin', 'active', ?, ?)`,
-      [id, full_name.trim(), email.toLowerCase(), password_hash, publicKey, encryptedPrivateKey]
-    );
+    db.users.insert({
+      id,
+      full_name: full_name.trim(),
+      email: email.toLowerCase(),
+      password_hash,
+      role: 'admin',
+      status: 'active',
+      rsa_public_key: publicKey,
+      rsa_private_key_enc: encryptedPrivateKey
+    });
 
     const meta = extractRequestMeta(req);
     await logEvent({ userId: id, eventType: EventTypes.REGISTER, ...meta, details: { role: 'admin' }, status: 'success' });
@@ -69,7 +74,7 @@ async function setupAdmin(req, res) {
 // ---------------------------------------------------------------------------
 
 async function checkSetup(req, res) {
-  const admin = await queryOne("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+  const admin = db.users.findOne({ role: 'admin' });
   res.json({ setupRequired: !admin });
 }
 
@@ -86,10 +91,7 @@ async function login(req, res) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const user = await queryOne(
-      'SELECT id, full_name, email, password_hash, role, status FROM users WHERE email = ?',
-      [email.toLowerCase()]
-    );
+    const user = db.users.findOne({ email: email.toLowerCase() });
 
     if (!user) {
       await logEvent({ eventType: EventTypes.LOGIN_FAILED, ...meta, details: { email }, status: 'failure' });
@@ -159,12 +161,19 @@ async function logout(req, res) {
 
 async function getProfile(req, res) {
   try {
-    const user = await queryOne(
-      'SELECT id, full_name, email, role, status, rsa_public_key, created_at FROM users WHERE id = ?',
-      [req.user.id]
-    );
+    const user = db.users.findOne({ id: req.user.id });
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ user });
+    res.json({
+      user: {
+        id: user.id,
+        full_name: user.full_name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        rsa_public_key: user.rsa_public_key,
+        created_at: user.created_at
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch profile' });
   }
@@ -179,11 +188,11 @@ async function updateProfile(req, res) {
     const { full_name, current_password, new_password } = req.body;
 
     if (full_name) {
-      await query('UPDATE users SET full_name = ? WHERE id = ?', [full_name.trim(), req.user.id]);
+      db.users.update({ id: req.user.id }, { full_name: full_name.trim() });
     }
 
     if (current_password && new_password) {
-      const user = await queryOne('SELECT password_hash FROM users WHERE id = ?', [req.user.id]);
+      const user = db.users.findOne({ id: req.user.id });
       const valid = await bcrypt.compare(current_password, user.password_hash);
       if (!valid) {
         return res.status(400).json({ error: 'Current password is incorrect' });
@@ -192,7 +201,7 @@ async function updateProfile(req, res) {
         return res.status(400).json({ error: 'New password must be at least 8 characters' });
       }
       const hash = await bcrypt.hash(new_password, 12);
-      await query('UPDATE users SET password_hash = ? WHERE id = ?', [hash, req.user.id]);
+      db.users.update({ id: req.user.id }, { password_hash: hash });
     }
 
     res.json({ message: 'Profile updated successfully' });

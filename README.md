@@ -32,14 +32,13 @@ Enterprise and personal cloud storage services are susceptible to server-side co
 [Node.js / Express.js API Gateway]
        │
        ├─► [Auth & RBAC Middleware] (Validate Session / Token)
-       │
        ├─► [Cryptographic Engine] (Node.js Crypto Module)
        │     ├─► AES-256-GCM Symmetric Cipher
        │     ├─► RSA-2048-OAEP Key Protection
        │     ├─► SHA-256 Integrity Verification
        │     └─► RSA-SHA256 Digital Signature
        │
-       ├─► [MySQL Metadata Store] (Audit Logs, Performance, Shares, RBAC)
+       ├─► [File-Based JSON Metadata Store] (users.json, files.json, shares.json, access.json, security_logs.json)
        │
        └─► [Amazon S3 Bucket] (Only Encrypted .enc Objects stored)
 ```
@@ -69,7 +68,7 @@ Captures all system events (login successes/failures, uploads, signature checks,
 4. Server generates a SHA-256 hash of the ciphertext.
 5. Server wraps (encrypts) the AES key using the owner's RSA-2048 public key (OAEP padding).
 6. Server signs the hash + filename payload using the owner's RSA-2048 private key (RSA-SHA256).
-7. Ciphertext is streamed to S3 as an encrypted object; keys, signatures, and hashes are stored in MySQL.
+7. Ciphertext is streamed to S3 as an encrypted object; keys, signatures, and hashes are stored in the JSON metadata database.
 8. Plaintext buffers are immediately garbage collected/deleted.
 
 ### B. External `.secure` Package Workflow
@@ -116,17 +115,17 @@ Inside the `.secure` package envelope (JSON formatted data):
 
 ---
 
-## 🗄️ Database Structure (MySQL)
+## 🗄️ Database Structure (JSON File Database)
 
-We use exactly 7 relational tables with primary keys, indexes, and constraints.
+The database is built on a clean, light, and thread-safe file-based storage layer stored in the `storage/` directory:
 
-1. **`users`**: Platform user accounts. Stores hashed credentials, roles (Admin/Member), and RSA public keys + encrypted private keys (wrapped using the application secret).
-2. **`invitations`**: Invitations sent to new members by admins, carrying signup tokens.
-3. **`files`**: Secure file metadata, storage keys, IVs, tags, hashes, and signatures.
-4. **`file_keys`**: Wrapped symmetric key entries.
-5. **`file_shares`**: Active sharing mappings, permission bounds, and expiry timestamps.
-6. **`audit_logs`**: System security logs documenting event history, IP metadata, and outcomes.
-7. **`performance_metrics`**: Chronological statistics mapping processing times.
+1. **`users.json`**: Platform user accounts. Stores hashed credentials, roles (Admin/Member), and RSA public keys + encrypted private keys (wrapped using the application secret).
+2. **`members.json`**: Invitations sent to new members by admins, carrying signup tokens.
+3. **`files.json`**: Secure file metadata, storage keys, IVs, tags, hashes, and signatures.
+4. **`access.json`**: Wrapped symmetric key entries.
+5. **`shares.json`**: Active sharing mappings, permission bounds, and expiry timestamps.
+6. **`security_logs.json`**: System security logs documenting event history, IP metadata, and outcomes.
+7. **`performance_metrics.json`**: Chronological statistics mapping processing times.
 
 ---
 
@@ -134,24 +133,11 @@ We use exactly 7 relational tables with primary keys, indexes, and constraints.
 
 ### Prerequisites
 - Node.js (v18.0.0 or higher)
-- MySQL Server (v8.0 or higher)
 - AWS Account with an S3 Bucket (or compatible MinIO/LocalStack)
 
-### 1. Database Configuration
-Create a new schema in MySQL:
-```sql
-CREATE DATABASE secure_cloud_db;
-```
-
-### 2. Environment Setup
+### 1. Environment Setup
 Copy `.env.example` to `.env` and fill out the values:
 ```env
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=yourpassword
-DB_NAME=secure_cloud_db
-
 AWS_ACCESS_KEY_ID=your_aws_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret
 AWS_REGION=us-east-1
@@ -164,24 +150,23 @@ PORT=5000
 NODE_ENV=development
 ```
 
-### 3. Install & Start Application
+### 2. Install & Start Application
 ```bash
-# Run npm install (bypassing execution policies if needed)
-powershell -ExecutionPolicy Bypass -Command "npm install"
+# Install dependencies
+npm install
 
 # Start the application
 npm start
 ```
-The system automatically connects to MySQL, applies DB migrations, and runs on `http://localhost:5000`.
+The system automatically creates the `storage/` directory, initializes the database tables, and runs on `http://localhost:5000`.
 
 ---
 
 ## ☁️ Render Deployment Instructions
 
 1. **Create Web Service**: Link your repository to Render.
-2. **Setup Databases**: Provision a MySQL Database on Render.
-3. **Attach render.yaml**: Use the provided `render.yaml` Blueprint to auto-configure services.
-4. **Configure S3 Credentials**: Add S3 environment variables under the Web Service Environment tab on the Render Dashboard.
+2. **Attach render.yaml**: Use the provided `render.yaml` Blueprint to auto-configure services.
+3. **Configure S3 Credentials**: Add S3 environment variables under the Web Service Environment tab on the Render Dashboard.
 
 ---
 

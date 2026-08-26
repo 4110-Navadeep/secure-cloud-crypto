@@ -9,7 +9,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const validator = require('validator');
 
-const { query, queryOne } = require('../database/db');
+const db = require('../database/db');
 const { generateRSAKeyPair, encryptPrivateKeyForStorage } = require('../crypto/cryptoService');
 const { sendInvitationEmail } = require('../services/emailService');
 const { logEvent, EventTypes, extractRequestMeta } = require('../services/auditService');
@@ -34,30 +34,35 @@ async function inviteMember(req, res) {
     }
 
     // Check if user already exists
-    const existing = await queryOne('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
+    const existing = db.users.findOne({ email: email.toLowerCase() });
     if (existing) {
       return res.status(409).json({ error: 'A user with this email already exists' });
     }
 
     // Check for existing pending invitation
-    const existingInvite = await queryOne(
-      "SELECT id FROM invitations WHERE email = ? AND status = 'pending'",
-      [email.toLowerCase()]
-    );
+    const existingInvite = db.members.findOne({
+      email: email.toLowerCase(),
+      status: 'pending'
+    });
     if (existingInvite) {
       return res.status(409).json({ error: 'An invitation for this email is already pending' });
     }
 
     // Generate secure token
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(); // 48 hours
 
     const inviteId = uuidv4();
-    await query(
-      `INSERT INTO invitations (id, email, full_name, role, token, status, invited_by, expires_at)
-       VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`,
-      [inviteId, email.toLowerCase(), full_name.trim(), role, token, req.user.id, expiresAt]
-    );
+    db.members.insert({
+      id: inviteId,
+      email: email.toLowerCase(),
+      full_name: full_name.trim(),
+      role,
+      token,
+      status: 'pending',
+      invited_by: req.user.id,
+      expires_at: expiresAt
+    });
 
     // Send invitation email
     try {
@@ -96,10 +101,7 @@ async function inviteMember(req, res) {
 
 async function validateInvitation(req, res) {
   const { token } = req.params;
-  const inv = await queryOne(
-    "SELECT id, email, full_name, role, expires_at, status FROM invitations WHERE token = ?",
-    [token]
-  );
+  const inv = db.members.findOne({ token });
 
   if (!inv) return res.status(404).json({ error: 'Invitation not found or invalid' });
   if (inv.status === 'accepted') return res.status(409).json({ error: 'Invitation already accepted' });
@@ -129,18 +131,15 @@ async function registerViainvitation(req, res) {
       return res.status(400).json({ error: 'Passwords do not match' });
     }
 
-    const inv = await queryOne(
-      "SELECT * FROM invitations WHERE token = ? AND status = 'pending'",
-      [token]
-    );
+    const inv = db.members.findOne({ token, status: 'pending' });
     if (!inv) return res.status(404).json({ error: 'Invalid or expired invitation' });
     if (new Date(inv.expires_at) < new Date()) {
-      await query("UPDATE invitations SET status = 'expired' WHERE id = ?", [inv.id]);
+      db.members.update({ id: inv.id }, { status: 'expired' });
       return res.status(410).json({ error: 'Invitation has expired' });
     }
 
     // Check user doesn't already exist
-    const existing = await queryOne('SELECT id FROM users WHERE email = ?', [inv.email]);
+    const existing = db.users.findOne({ email: inv.email });
     if (existing) return res.status(409).json({ error: 'Account already exists for this email' });
 
     const id = uuidv4();
@@ -150,13 +149,18 @@ async function registerViainvitation(req, res) {
     const { publicKey, privateKey } = generateRSAKeyPair();
     const encryptedPrivateKey = encryptPrivateKeyForStorage(privateKey, id);
 
-    await query(
-      `INSERT INTO users (id, full_name, email, password_hash, role, status, rsa_public_key, rsa_private_key_enc)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, ?)`,
-      [id, inv.full_name, inv.email, password_hash, inv.role, publicKey, encryptedPrivateKey]
-    );
+    db.users.insert({
+      id,
+      full_name: inv.full_name,
+      email: inv.email,
+      password_hash,
+      role: inv.role,
+      status: 'active',
+      rsa_public_key: publicKey,
+      rsa_private_key_enc: encryptedPrivateKey
+    });
 
-    await query("UPDATE invitations SET status = 'accepted' WHERE id = ?", [inv.id]);
+    db.members.update({ id: inv.id }, { status: 'accepted' });
 
     await logEvent({
       userId: id,
@@ -179,10 +183,15 @@ async function registerViainvitation(req, res) {
 // ---------------------------------------------------------------------------
 
 async function listMembers(req, res) {
-  const members = await query(
-    `SELECT id, full_name, email, role, status, created_at FROM users ORDER BY created_at DESC`,
-    []
-  );
+  const members = db.users.find().map(m => ({
+    id: m.id,
+    full_name: m.full_name,
+    email: m.email,
+    role: m.role,
+    status: m.status,
+    created_at: m.created_at
+  })).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
   res.json({ members });
 }
 
@@ -191,14 +200,20 @@ async function listMembers(req, res) {
 // ---------------------------------------------------------------------------
 
 async function listInvitations(req, res) {
-  const invitations = await query(
-    `SELECT i.id, i.email, i.full_name, i.role, i.status, i.expires_at, i.created_at,
-            u.full_name AS invited_by_name
-     FROM invitations i
-     LEFT JOIN users u ON u.id = i.invited_by
-     ORDER BY i.created_at DESC`,
-    []
-  );
+  const invitations = db.members.find().map(inv => {
+    const inviter = db.users.findOne({ id: inv.invited_by });
+    return {
+      id: inv.id,
+      email: inv.email,
+      full_name: inv.full_name,
+      role: inv.role,
+      status: inv.status,
+      expires_at: inv.expires_at,
+      created_at: inv.created_at,
+      invited_by_name: inviter ? inviter.full_name : 'System'
+    };
+  }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
   res.json({ invitations });
 }
 
@@ -219,7 +234,7 @@ async function updateMemberStatus(req, res) {
     return res.status(400).json({ error: 'Cannot change your own account status' });
   }
 
-  await query('UPDATE users SET status = ? WHERE id = ?', [status, id]);
+  db.users.update({ id }, { status });
   res.json({ message: `Member status updated to ${status}` });
 }
 

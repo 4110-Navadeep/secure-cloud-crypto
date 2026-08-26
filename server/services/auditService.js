@@ -1,9 +1,9 @@
 'use strict';
 /**
- * Audit Log Service — records all security events to MySQL.
+ * Audit Log Service — records all security events to JSON DB.
  */
 
-const { query } = require('../database/db');
+const db = require('../database/db');
 const { v4: uuidv4 } = require('uuid');
 
 const EventTypes = {
@@ -41,22 +41,17 @@ const EventTypes = {
  */
 async function logEvent({ userId = null, eventType, fileId = null, ipAddress = null, userAgent = null, details = {}, status = 'success' }) {
   try {
-    await query(
-      `INSERT INTO audit_logs (id, user_id, event_type, file_id, ip_address, user_agent, details, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        uuidv4(),
-        userId,
-        eventType,
-        fileId,
-        ipAddress,
-        userAgent,
-        JSON.stringify(details),
-        status,
-      ]
-    );
+    db.securityLogs.insert({
+      id: uuidv4(),
+      user_id: userId,
+      event_type: eventType,
+      file_id: fileId,
+      ip_address: ipAddress,
+      user_agent: userAgent,
+      details: typeof details === 'string' ? JSON.parse(details) : details,
+      status,
+    });
   } catch (err) {
-    // Don't let audit logging failure crash the main operation
     console.error('[AUDIT] Failed to log event:', err.message);
   }
 }
