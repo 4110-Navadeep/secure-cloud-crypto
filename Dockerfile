@@ -1,5 +1,5 @@
 # Use official light Node.js environment
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Create app directory
 WORKDIR /usr/src/app

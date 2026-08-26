@@ -138,20 +138,34 @@ app.use((err, req, res, next) => {
 async function start() {
   try {
     // Validate required env vars
-    if (!config.jwt.secret) throw new Error('JWT_SECRET is not set');
-    if (!config.app.secret) throw new Error('APPLICATION_SECRET is not set');
-    if (!config.db.user) throw new Error('DB_USER is not set');
+    const requiredVars = [
+      { name: 'JWT_SECRET', val: config.jwt.secret },
+      { name: 'APPLICATION_SECRET', val: config.app.secret },
+      { name: 'DB_HOST', val: config.db.host },
+      { name: 'DB_PORT', val: config.db.port },
+      { name: 'DB_USER', val: config.db.user },
+      { name: 'DB_PASSWORD', val: config.db.password },
+      { name: 'DB_NAME', val: config.db.database },
+    ];
 
+    for (const v of requiredVars) {
+      if (v.val === undefined || v.val === null || String(v.val).trim() === '') {
+        console.error(`[SERVER] Missing required environment variable: ${v.name}`);
+        process.exit(1);
+      }
+    }
+
+    console.log('[DATABASE] Connecting to configured MySQL server...');
     // Test DB connection
     await testConnection();
-    console.log('[DB] Connected to MySQL successfully');
+    console.log('[DATABASE] MySQL connection successful.');
 
     // Run migrations
     await runMigrations();
 
     const PORT = config.app.port;
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`[SERVER] Secure Cloud running on http://0.0.0.0:${PORT}`);
+      console.log(`[SERVER] Application started successfully. Listening on http://0.0.0.0:${PORT}`);
       console.log(`[SERVER] Environment: ${config.app.nodeEnv}`);
     });
   } catch (err) {
