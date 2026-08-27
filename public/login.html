@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Secure Crypt</title>
+  <meta name="description" content="Secure account login portal. Access your local workspace, published files, and key requests.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-body">
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo">
+          <span>🔐</span> SECURE <span style="color: var(--accent-cyan);">CRYPT</span>
+        </div>
+        <div class="auth-subtitle">Hybrid Cryptography Workspace</div>
+      </div>
+
+      <form id="login-form">
+        <div class="auth-form-group">
+          <label class="auth-label" for="email">Email Address</label>
+          <input class="auth-input" type="email" id="email" placeholder="name@domain.com" required>
+        </div>
+
+        <div class="auth-form-group">
+          <label class="auth-label" for="password">Password</label>
+          <input class="auth-input" type="password" id="password" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn-primary-lg w-full" style="margin: 20px 0; width: 100%;" id="submit-btn">
+          <span id="btn-text">🔐 Access Workspace</span>
+          <span id="btn-spinner" class="btn-spinner hidden"></span>
+        </button>
+      </form>
+
+      <div class="auth-footer-links">
+        <a href="javascript:void(0)" onclick="showToast('Password recovery is offline. Please contact an admin.','warning')" class="auth-link">Forgot Password?</a>
+        <a href="/register.html" class="auth-link">Create Account</a>
+      </div>
+
+      <div style="text-align: center; margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+        <a href="/admin-login.html" class="auth-link" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">💼 Administrator Access</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/shared.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    // Redirect if already logged in
+    if (isLoggedIn()) {
+      window.location.href = '/dashboard.html';
+    }
+
+    const form = document.getElementById('login-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const btnText = document.getElementById('btn-text');
+    const btnSpinner = document.getElementById('btn-spinner');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      submitBtn.disabled = true;
+      btnText.textContent = 'Verifying...';
+      btnSpinner.classList.remove('hidden');
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Login failed.');
+        }
+
+        saveSession(data.token, data.user);
+        showToast('Login successful! Loading workspace...', 'success');
+        
+        setTimeout(() => {
+          window.location.href = '/dashboard.html';
+        }, 1000);
+      } catch (err) {
+        showToast(err.message, 'error');
+        submitBtn.disabled = false;
+        btnText.textContent = '🔐 Access Workspace';
+        btnSpinner.classList.add('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

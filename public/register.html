@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — Secure Crypt</title>
+  <meta name="description" content="Register an account for the Secure Crypt workspace.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-body">
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo">
+          <span>🔐</span> SECURE <span style="color: var(--accent-cyan);">CRYPT</span>
+        </div>
+        <div class="auth-subtitle">Workspace Account Registration</div>
+      </div>
+
+      <form id="register-form">
+        <div class="auth-form-group">
+          <label class="auth-label" for="name">Full Name</label>
+          <input class="auth-input" type="text" id="name" placeholder="John Doe" required>
+        </div>
+
+        <div class="auth-form-group">
+          <label class="auth-label" for="email">Email Address</label>
+          <input class="auth-input" type="email" id="email" placeholder="name@domain.com" required>
+        </div>
+
+        <div class="auth-form-group">
+          <label class="auth-label" for="password">Password</label>
+          <input class="auth-input" type="password" id="password" placeholder="Min 8 chars, 1 uppercase, 1 number" required>
+          <div class="pw-strength" style="margin-top:6px;">
+            <div id="pw-bar" class="pw-strength-bar"></div>
+          </div>
+          <div id="pw-label" class="pw-strength-label" style="color:var(--text-muted); font-size:10px; margin-top:2px;">Enter password</div>
+        </div>
+
+        <div class="auth-form-group">
+          <label class="auth-label" for="confirm-password">Confirm Password</label>
+          <input class="auth-input" type="password" id="confirm-password" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn-primary-lg w-full" style="margin: 20px 0; width: 100%;" id="submit-btn">
+          <span id="btn-text">📦 Create Account</span>
+          <span id="btn-spinner" class="btn-spinner hidden"></span>
+        </button>
+      </form>
+
+      <div class="auth-footer-links" style="justify-content: center;">
+        <span style="color: var(--text-muted); margin-right: 6px;">Already have an account?</span>
+        <a href="/login.html" class="auth-link">Login</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/shared.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    if (isLoggedIn()) {
+      window.location.href = '/dashboard.html';
+    }
+
+    const form = document.getElementById('register-form');
+    const password = document.getElementById('password');
+    const confirm = document.getElementById('confirm-password');
+    const pwBar = document.getElementById('pw-bar');
+    const pwLabel = document.getElementById('pw-label');
+    const submitBtn = document.getElementById('submit-btn');
+
+    // Real-time password strength check
+    password.addEventListener('input', () => {
+      const val = password.value;
+      let score = 0;
+      if (val.length >= 8) score++;
+      if (/[A-Z]/.test(val)) score++;
+      if (/[0-9]/.test(val)) score++;
+
+      if (val.length === 0) {
+        pwBar.style.width = '0%';
+        pwLabel.textContent = 'Enter password';
+        pwLabel.style.color = 'var(--text-muted)';
+      } else if (score < 2) {
+        pwBar.style.width = '33%';
+        pwBar.style.backgroundColor = 'var(--danger)';
+        pwLabel.textContent = 'Weak (Need 8+ chars, 1 uppercase, 1 number)';
+        pwLabel.style.color = 'var(--danger)';
+      } else if (score === 2) {
+        pwBar.style.width = '66%';
+        pwBar.style.backgroundColor = 'var(--warning)';
+        pwLabel.textContent = 'Medium (Almost there)';
+        pwLabel.style.color = 'var(--warning)';
+      } else {
+        pwBar.style.width = '100%';
+        pwBar.style.backgroundColor = 'var(--success)';
+        pwLabel.textContent = 'Strong Password';
+        pwLabel.style.color = 'var(--success)';
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const pass = password.value;
+      const confPass = confirm.value;
+
+      if (pass !== confPass) {
+        showToast('Passwords do not match.', 'error');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      document.getElementById('btn-text').textContent = 'Creating...';
+      document.getElementById('btn-spinner').classList.remove('hidden');
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password: pass, confirmPassword: confPass })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Registration failed.');
+        }
+
+        showToast('Account created successfully! Redirecting...', 'success');
+        setTimeout(() => {
+          window.location.href = '/login.html';
+        }, 1200);
+      } catch (err) {
+        showToast(err.message, 'error');
+        submitBtn.disabled = false;
+        document.getElementById('btn-text').textContent = '📦 Create Account';
+        document.getElementById('btn-spinner').classList.add('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

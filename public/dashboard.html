@@ -35,7 +35,7 @@
       <main class="app-main">
         <div class="page-header">
           <div class="page-header-inner">
-            <h1 class="page-title">🏠 Cryptographic Workspace Dashboard</h1>
+            <h1 class="page-title" id="welcome-title">🏠 Cryptographic Workspace Dashboard</h1>
             <span class="module-badge">Workspace Status</span>
           </div>
           <p class="page-subtitle">Monitor local processing statistics, security activity, and cryptographic engine status.</p>
@@ -167,10 +167,15 @@
   <div id="toast-container"></div>
 
   <script src="/js/shared.js"></script>
+  <script src="/js/auth.js"></script>
   <script src="/js/sidebar.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       initSidebar('dashboard');
+      const user = getUser();
+      if (user) {
+        document.getElementById('welcome-title').textContent = `🏠 Welcome back, ${user.name}`;
+      }
       loadStats();
       loadActivity();
 

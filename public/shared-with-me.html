@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shared With Me — Secure Crypt</title>
+  <meta name="description" content="View encrypted files that have been shared with you after approved access requests.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-body">
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">☰</button>
+          <h1 class="page-title">Shared With Me</h1>
+        </div>
+        <div class="header-actions">
+          <span class="security-status verified"><span class="dot"></span> APPROVED ACCESS</span>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <div class="page-header">
+          <div class="page-header-inner">
+            <h1 class="page-title">🤝 Shared With Me</h1>
+            <span class="module-badge">Approved Files</span>
+          </div>
+          <p class="page-subtitle">
+            These are encrypted files for which your access request was approved. 
+            Contact each file's owner directly to receive the passphrase and the <code>.secure</code> file.
+          </p>
+        </div>
+
+        <!-- Info Banner -->
+        <div class="glass-card" style="margin-bottom: 20px; border-color: rgba(0, 230, 118, 0.2);">
+          <div class="glass-card-body" style="padding: 16px 20px;">
+            <div style="display:flex; gap:12px; align-items:center;">
+              <span style="font-size:20px;">🔒</span>
+              <div style="font-size:12px; color:var(--text-secondary); line-height:1.7;">
+                <strong style="color:var(--success);">Your access has been approved.</strong>
+                To decrypt the file, you need the <strong>passphrase</strong> and the <strong>.secure file</strong>
+                from the owner. Use the <a href="/verify.html" style="color:var(--accent-cyan);">Open Package</a> page to decrypt.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Files Grid -->
+        <div id="files-container">
+          <div style="text-align:center; color:var(--text-muted); padding:60px 0;">
+            <div style="font-size:32px; margin-bottom:12px;">⏳</div>
+            <div style="font-size:14px;">Loading shared files...</div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="/js/shared.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initSidebar('shared-with-me');
+      loadSharedFiles();
+    });
+
+    async function loadSharedFiles() {
+      const container = document.getElementById('files-container');
+      try {
+        const res = await apiFetch('/api/files/shared-with-me');
+        const data = await res.json();
+
+        if (!data.files || !data.files.length) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">🤝</div>
+              <div class="empty-state-title">No Files Shared With You Yet</div>
+              <div class="empty-state-desc">
+                Once an admin approves your access request, files appear here. 
+                Contact the file owner to get the passphrase and actual .secure file.
+              </div>
+              <div style="display:flex; gap:12px; justify-content:center; margin-top:16px; flex-wrap:wrap;">
+                <a href="/published-files.html" class="btn-primary">📢 Browse Published Files</a>
+                <a href="/access-requests.html" class="btn-outline">🔑 My Requests</a>
+              </div>
+            </div>`;
+          return;
+        }
+
+        container.innerHTML = `<div class="files-grid">` + data.files.map(f => `
+          <div class="file-card" style="padding:18px; border-left: 3px solid var(--success);">
+            <div class="file-card-icon decrypt" style="font-size:22px;">🤝</div>
+            <div class="file-card-info">
+              <div class="file-card-name">${esc(f.filename)}</div>
+              <div class="file-card-meta">
+                Owner: ${esc(f.ownerName)} · Shared ${new Date(f.createdAt).toLocaleDateString()}
+                ${f.hasSignature ? ' · <span style="color:var(--success); font-size:11px;">✓ Signed</span>' : ''}
+              </div>
+              ${f.description ? `<div style="font-size:12px; color:var(--text-muted); margin-top:4px; line-height:1.4;">${esc(f.description)}</div>` : ''}
+            </div>
+            <div style="flex-shrink:0;">
+              <a href="/verify.html" class="btn-secondary-lg" style="margin:0; padding:8px 14px; font-size:12px; text-decoration:none; display:inline-block;">🔓 Open Package</a>
+            </div>
+          </div>
+        `).join('') + `</div>`;
+      } catch (err) {
+        container.innerHTML = `<div style="text-align:center; color:var(--danger); padding:60px 0; font-size:14px;">Failed to load: ${err.message}</div>`;
+      }
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

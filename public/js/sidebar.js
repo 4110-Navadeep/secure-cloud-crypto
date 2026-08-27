@@ -1,9 +1,17 @@
 /**
  * Secure Crypt — Sidebar Component & Controller
- * Stateless local session sidebar.
+ * Dynanmic, session-aware workspace sidebar.
  */
 
 function renderSidebar() {
+  const user = window.getUser ? window.getUser() : null;
+  const loggedIn = !!user;
+  const isAdmin = window.isAdmin ? window.isAdmin() : false;
+
+  const userInitials = user && user.name ? user.name.slice(0, 2).toUpperCase() : 'US';
+  const userName = user && user.name ? user.name : 'Not Logged In';
+  const userRole = user && user.role ? (user.role.includes('admin') ? 'ADMINISTRATOR' : 'USER SESSION') : 'GUEST';
+
   return `
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-logo">
@@ -23,6 +31,11 @@ function renderSidebar() {
           <a href="/my-files.html" class="nav-item" data-page="my-files">
             <span class="nav-icon">📁</span> My Files
           </a>
+          ${loggedIn ? `
+          <a href="/published-files.html" class="nav-item" data-page="published-files">
+            <span class="nav-icon">📢</span> Published Files
+          </a>
+          ` : ''}
         </div>
 
         <div class="nav-section">
@@ -56,9 +69,19 @@ function renderSidebar() {
           <a href="/threat-monitoring.html" class="nav-item" data-page="threat-monitoring">
             <span class="nav-icon">🚨</span> Threat Monitoring
           </a>
-          <a href="/admin.html" class="nav-item" data-page="admin">
+          ${loggedIn ? `
+          <a href="/access-requests.html" class="nav-item" data-page="access-requests">
+            <span class="nav-icon">🔑</span> Access Requests
+          </a>
+          <a href="/shared-with-me.html" class="nav-item" data-page="shared-with-me">
+            <span class="nav-icon">🤝</span> Shared With Me
+          </a>
+          ` : ''}
+          ${isAdmin ? `
+          <a href="/admin-panel.html" class="nav-item" data-page="admin">
             <span class="nav-icon">💼</span> Admin Panel
           </a>
+          ` : ''}
           <a href="/help.html" class="nav-item" data-page="help">
             <span class="nav-icon">ℹ️</span> Help &amp; Support
           </a>
@@ -67,10 +90,15 @@ function renderSidebar() {
 
       <div class="sidebar-footer">
         <div class="user-info">
-          <div class="user-avatar">WS</div>
-          <div class="user-details">
-            <div class="user-name">Local Workspace</div>
-            <div class="user-role">Stateless Mode</div>
+          <div class="user-avatar">${userInitials}</div>
+          <div class="user-details" style="display:flex; flex-direction:column; min-width:0;">
+            <div class="user-name" style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${userName}</div>
+            <div class="user-role" style="font-size:10px; color:var(--text-muted);">${userRole}</div>
+            ${loggedIn ? `
+            <a href="javascript:void(0)" onclick="logout()" style="color:#ef4444; font-size:11px; font-weight:600; text-decoration:none; margin-top:4px;">Logout ↩</a>
+            ` : `
+            <a href="/login.html" style="color:var(--accent-cyan); font-size:11px; font-weight:600; text-decoration:none; margin-top:4px;">Login →</a>
+            `}
           </div>
         </div>
       </div>

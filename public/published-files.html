@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Published Files — Secure Crypt</title>
+  <meta name="description" content="Browse and manage your published encrypted file metadata. Request access to files shared by others.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-body">
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">☰</button>
+          <h1 class="page-title">Published Files</h1>
+        </div>
+        <div class="header-actions">
+          <button class="btn-primary-lg" id="publish-btn" style="padding: 8px 16px; font-size: 12px; margin: 0;">📢 Publish File</button>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <div class="page-header">
+          <div class="page-header-inner">
+            <h1 class="page-title">📢 Published Files</h1>
+            <span class="module-badge">File Sharing</span>
+          </div>
+          <p class="page-subtitle">
+            Browse encrypted file metadata shared by workspace users. You can request access to any file — 
+            an admin will review and approve your request.
+          </p>
+        </div>
+
+        <!-- Publish Form Modal -->
+        <div class="sig-modal-backdrop" id="publish-modal">
+          <div class="sig-modal" style="max-width: 500px;">
+            <div class="sig-modal-header">
+              <h3 class="sig-modal-title">📢 Publish File Metadata</h3>
+              <button class="file-clear-btn" id="close-publish-modal" style="font-size:20px;">✕</button>
+            </div>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px; line-height:1.6;">
+              Publishing registers your file's metadata so others can discover it and request access. 
+              The <strong>actual .secure file</strong> stays with you — you share it only with approved users.
+            </p>
+            <div class="auth-form-group">
+              <label class="auth-label">Filename (e.g. report_2024.pdf.secure)</label>
+              <input class="auth-input" type="text" id="pub-filename" placeholder="document.pdf">
+            </div>
+            <div class="auth-form-group">
+              <label class="auth-label">Description (optional)</label>
+              <textarea class="auth-input" id="pub-description" rows="3" placeholder="Brief description of the file contents..." style="resize: vertical;"></textarea>
+            </div>
+            <div class="auth-form-group" style="display: flex; gap: 16px; align-items: center;">
+              <label class="toggle-label" for="pub-sig">
+                <input type="checkbox" id="pub-sig">
+                <span class="toggle-switch"></span>
+                <div>
+                  <div class="option-title" style="font-size:13px;">Digitally Signed</div>
+                </div>
+              </label>
+            </div>
+            <div class="sig-modal-footer">
+              <button class="btn-secondary-lg" id="cancel-publish" style="margin:0; padding:10px 18px;">Cancel</button>
+              <button class="btn-primary-lg" id="confirm-publish" style="margin:0; padding:10px 18px;">📢 Publish</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- File Grid -->
+        <div id="files-container">
+          <div style="text-align:center; color:var(--text-muted); padding: 60px 0;">
+            <div style="font-size:32px; margin-bottom:12px;">⏳</div>
+            <div style="font-size:14px;">Loading published files...</div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="/js/shared.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initSidebar('published-files');
+      loadFiles();
+
+      const publishModal = document.getElementById('publish-modal');
+      document.getElementById('publish-btn').addEventListener('click', () => publishModal.classList.add('visible'));
+      document.getElementById('close-publish-modal').addEventListener('click', () => publishModal.classList.remove('visible'));
+      document.getElementById('cancel-publish').addEventListener('click', () => publishModal.classList.remove('visible'));
+      document.getElementById('confirm-publish').addEventListener('click', publishFile);
+    });
+
+    async function loadFiles() {
+      try {
+        const res = await apiFetch('/api/files/published');
+        const data = await res.json();
+        renderFiles(data.files || []);
+      } catch (err) {
+        document.getElementById('files-container').innerHTML = `
+          <div style="text-align:center; color:var(--danger); padding:60px 0; font-size:14px;">
+            Failed to load files: ${err.message}
+          </div>`;
+      }
+    }
+
+    function renderFiles(files) {
+      const container = document.getElementById('files-container');
+      if (!files.length) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📢</div>
+            <div class="empty-state-title">No Published Files Yet</div>
+            <div class="empty-state-desc">Be the first to publish an encrypted file. Click "Publish File" above after encrypting.</div>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = `<div class="files-grid">` + files.map(f => {
+        const isOwner = f.isOwner;
+        const hasAccess = f.hasAccess;
+        return `
+          <div class="file-card" style="padding: 18px;">
+            <div class="file-card-icon ${isOwner ? 'encrypt' : 'decrypt'}" style="font-size:22px;">📦</div>
+            <div class="file-card-info">
+              <div class="file-card-name">${esc(f.filename)}</div>
+              <div class="file-card-meta">
+                By ${esc(f.ownerName)} · ${new Date(f.createdAt).toLocaleDateString()}
+                ${f.hasSignature ? ' · <span style="color:var(--success);">✓ Signed</span>' : ''}
+              </div>
+              ${f.description ? `<div style="font-size:12px; color:var(--text-muted); margin-top:4px; line-height:1.4;">${esc(f.description)}</div>` : ''}
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
+              ${isOwner
+                ? `<span class="badge badge-active" style="font-size:11px;">Owner</span>
+                   <button class="btn-secondary-lg" onclick="deleteFile('${f.id}')" style="margin:0; padding:6px 10px; font-size:11px; color:var(--danger);">Delete</button>`
+                : hasAccess
+                  ? `<span class="badge badge-approved" style="font-size:11px;">Access Granted</span>`
+                  : `<button class="btn-primary-lg" onclick="requestAccess('${f.id}')" style="margin:0; padding:8px 14px; font-size:12px;">🔑 Request Access</button>`
+              }
+            </div>
+          </div>`;
+      }).join('') + `</div>`;
+    }
+
+    async function publishFile() {
+      const filename = document.getElementById('pub-filename').value.trim();
+      const description = document.getElementById('pub-description').value.trim();
+      const hasSignature = document.getElementById('pub-sig').checked;
+      if (!filename) { showToast('Filename is required.', 'error'); return; }
+      try {
+        const res = await apiFetch('/api/files/publish', {
+          method: 'POST',
+          body: JSON.stringify({ filename, description, hasSignature }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showToast('File published!', 'success');
+        document.getElementById('publish-modal').classList.remove('visible');
+        document.getElementById('pub-filename').value = '';
+        document.getElementById('pub-description').value = '';
+        loadFiles();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function requestAccess(fileId) {
+      try {
+        const res = await apiFetch(`/api/files/request-access/${fileId}`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showToast('Access request submitted! An admin will review it.', 'success');
+        loadFiles();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function deleteFile(id) {
+      if (!confirm('Remove this file from the published list?')) return;
+      try {
+        const res = await apiFetch(`/api/files/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showToast('File removed.', 'success');
+        loadFiles();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

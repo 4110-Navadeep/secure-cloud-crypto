@@ -8,6 +8,9 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 
 const cryptoRoutes = require('./routes/crypto');
+const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
+const filesRoutes = require('./routes/files');
 
 const app = express();
 
@@ -80,6 +83,9 @@ app.get('/health', (req, res) => {
 // API Routes
 // ---------------------------------------------------------------------------
 app.use('/api/crypto', cryptoRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/files', filesRoutes);
 
 // ---------------------------------------------------------------------------
 // SPA Fallback — serve index.html for all non-API routes

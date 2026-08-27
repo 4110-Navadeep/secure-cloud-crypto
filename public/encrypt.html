@@ -107,6 +107,12 @@
             </label>
           </div>
 
+          <!-- Signature Preview Area -->
+          <div class="option-row hidden" id="sig-preview-row" style="margin-top: 10px;">
+            <label class="auth-label">Signature Captured</label>
+            <div class="sig-thumbnail" id="sig-thumbnail-preview"></div>
+          </div>
+
           <!-- Encrypt Button -->
           <button class="btn-primary-lg w-full" id="encrypt-btn" disabled>
             <span id="encrypt-btn-text">🔐 Encrypt &amp; Generate .secure Package</span>
@@ -249,9 +255,32 @@
     </div>
   </div>
 
+  <!-- Digital Signature Modal -->
+  <div class="sig-modal-backdrop" id="sig-modal-backdrop">
+    <div class="sig-modal">
+      <div class="sig-modal-header">
+        <h3 class="sig-modal-title">✍️ Draw Your Digital Signature</h3>
+        <button type="button" class="file-clear-btn" id="close-sig-modal" style="font-size: 20px;">✕</button>
+      </div>
+      <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;">
+        Draw your signature below. The system will cryptographically bind this signature drawing to the protected package using RSA-SHA256.
+      </p>
+      <div class="sig-canvas-container">
+        <canvas class="sig-canvas" id="sig-canvas" width="530" height="240"></canvas>
+        <div class="sig-instructions" id="sig-instructions">Sign Here using Mouse or Touch</div>
+      </div>
+      <div class="sig-modal-footer">
+        <button type="button" class="btn-secondary-lg" id="clear-sig-btn" style="margin: 0; padding: 10px 18px;">Clear</button>
+        <button type="button" class="btn-secondary-lg" id="cancel-sig-btn" style="margin: 0; padding: 10px 18px;">Cancel</button>
+        <button type="button" class="btn-primary-lg" id="confirm-sig-btn" style="margin: 0; padding: 10px 18px;">Confirm Signature</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container"></div>
 
   <script src="/js/shared.js"></script>
+  <script src="/js/auth.js"></script>
   <script src="/js/sidebar.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -271,6 +300,107 @@
     const encryptBtn = document.getElementById('encrypt-btn');
     const passInput = document.getElementById('passphrase');
     const sigToggle = document.getElementById('sig-toggle');
+
+    // ---- Signature Modal Controller ----
+    const sigModal = document.getElementById('sig-modal-backdrop');
+    const sigCanvas = document.getElementById('sig-canvas');
+    const closeSig = document.getElementById('close-sig-modal');
+    const clearSig = document.getElementById('clear-sig-btn');
+    const cancelSig = document.getElementById('cancel-sig-btn');
+    const confirmSig = document.getElementById('confirm-sig-btn');
+    const sigInstructions = document.getElementById('sig-instructions');
+    const sigPreviewRow = document.getElementById('sig-preview-row');
+    const sigThumbnail = document.getElementById('sig-thumbnail-preview');
+
+    let signatureImage = null;
+    let isDrawing = false;
+    let sigCtx = sigCanvas.getContext('2d');
+
+    sigCtx.strokeStyle = '#00b4d8';
+    sigCtx.lineWidth = 3;
+    sigCtx.lineCap = 'round';
+
+    function getMousePos(canvasDom, e) {
+      const rect = canvasDom.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function startDrawing(e) {
+      isDrawing = true;
+      sigInstructions.classList.add('hidden');
+      const pos = getMousePos(sigCanvas, e);
+      sigCtx.beginPath();
+      sigCtx.moveTo(pos.x, pos.y);
+      e.preventDefault();
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      const pos = getMousePos(sigCanvas, e);
+      sigCtx.lineTo(pos.x, pos.y);
+      sigCtx.stroke();
+      e.preventDefault();
+    }
+
+    function stopDrawing() {
+      isDrawing = false;
+    }
+
+    sigCanvas.addEventListener('mousedown', startDrawing);
+    sigCanvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', stopDrawing);
+
+    sigCanvas.addEventListener('touchstart', startDrawing);
+    sigCanvas.addEventListener('touchmove', draw);
+    window.addEventListener('touchend', stopDrawing);
+
+    clearSig.addEventListener('click', () => {
+      sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+      sigInstructions.classList.remove('hidden');
+    });
+
+    function closeSignatureModal(confirmed = false) {
+      sigModal.classList.remove('visible');
+      if (!confirmed) {
+        sigToggle.checked = false;
+        signatureImage = null;
+        sigPreviewRow.classList.add('hidden');
+      }
+    }
+
+    cancelSig.addEventListener('click', () => closeSignatureModal(false));
+    closeSig.addEventListener('click', () => closeSignatureModal(false));
+
+    confirmSig.addEventListener('click', () => {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = sigCanvas.width;
+      tempCanvas.height = sigCanvas.height;
+      if (sigCanvas.toDataURL() === tempCanvas.toDataURL()) {
+        showToast('Please sign before confirming.', 'warning');
+        return;
+      }
+      signatureImage = sigCanvas.toDataURL();
+      sigThumbnail.innerHTML = `<img src="${signatureImage}" alt="Signature Preview">`;
+      sigPreviewRow.classList.remove('hidden');
+      closeSignatureModal(true);
+      showToast('Signature captured!', 'success');
+    });
+
+    sigToggle.addEventListener('change', () => {
+      if (sigToggle.checked) {
+        sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+        sigInstructions.classList.remove('hidden');
+        sigModal.classList.add('visible');
+      } else {
+        signatureImage = null;
+        sigPreviewRow.classList.add('hidden');
+      }
+    });
 
     // ---- File Selection ----
     fileInput.addEventListener('change', e => {
@@ -400,7 +530,7 @@
 
       try {
         const tStart = Date.now();
-        const response = await fetch('/api/crypto/encrypt', {
+        const response = await apiFetch('/api/crypto/encrypt', {
           method: 'POST',
           body: formData,
         });

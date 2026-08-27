@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Access Requests — Secure Crypt</title>
+  <meta name="description" content="View the status of your file access requests.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-body">
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">☰</button>
+          <h1 class="page-title">My Access Requests</h1>
+        </div>
+        <div class="header-actions">
+          <a href="/published-files.html" class="btn-primary-lg" style="padding: 8px 16px; font-size: 12px; margin: 0; text-decoration:none;">🔍 Browse Files</a>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <div class="page-header">
+          <div class="page-header-inner">
+            <h1 class="page-title">🔑 My Access Requests</h1>
+            <span class="module-badge">File Access</span>
+          </div>
+          <p class="page-subtitle">
+            Track the status of your requests to access encrypted files published by other users. 
+            Approved requests allow you to receive the decryption passphrase directly from the file owner.
+          </p>
+        </div>
+
+        <div class="glass-card">
+          <div class="glass-card-header">
+            <div class="card-title-row">
+              <span class="card-icon">🔑</span>
+              <h2 class="card-title">Access Request History</h2>
+            </div>
+          </div>
+          <div class="glass-card-body">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>File</th>
+                  <th>Owner</th>
+                  <th>Status</th>
+                  <th>Requested</th>
+                  <th>Reviewed</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody id="requests-tbody">
+                <tr>
+                  <td colspan="6" style="text-align:center; color:var(--text-muted); padding:40px;">
+                    Loading requests...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Info card -->
+        <div class="glass-card" style="margin-top:20px;">
+          <div class="glass-card-body" style="padding: 20px;">
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+              <span style="font-size:20px;">💡</span>
+              <div>
+                <div style="font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:6px;">How Access Works</div>
+                <div style="font-size:12px; color:var(--text-muted); line-height:1.7;">
+                  When your request is <strong style="color:var(--success);">approved</strong>, contact the file owner directly 
+                  to receive the decryption passphrase. The file appears in your 
+                  <a href="/shared-with-me.html" style="color:var(--accent-cyan);">Shared With Me</a> section. 
+                  The actual <code>.secure</code> file is never stored on this server — 
+                  only the owner holds it and shares it via a secure channel.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="/js/shared.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initSidebar('access-requests');
+      loadRequests();
+    });
+
+    async function loadRequests() {
+      const tbody = document.getElementById('requests-tbody');
+      try {
+        const res = await apiFetch('/api/files/my-requests');
+        const data = await res.json();
+        if (!data.requests || !data.requests.length) {
+          tbody.innerHTML = `
+            <tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:50px 0;">
+              <div style="font-size:28px; margin-bottom:10px;">🔑</div>
+              <div>No access requests yet.</div>
+              <div style="margin-top:8px; font-size:12px;">
+                <a href="/published-files.html" style="color:var(--accent-cyan);">Browse published files</a> to request access.
+              </div>
+            </td></tr>`;
+          return;
+        }
+        tbody.innerHTML = data.requests.map(r => `
+          <tr>
+            <td style="font-weight:600; color:var(--text-primary);">${esc(r.filename)}</td>
+            <td style="color:var(--text-muted);">${esc(r.ownerName || '—')}</td>
+            <td><span class="badge badge-${r.status}">${r.status}</span></td>
+            <td style="color:var(--text-muted); font-size:12px;">${fmtDate(r.requestedAt)}</td>
+            <td style="color:var(--text-muted); font-size:12px;">${r.reviewedAt ? fmtDate(r.reviewedAt) : '—'}</td>
+            <td style="font-size:12px; color:var(--text-muted);">${r.reviewNote || '—'}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger); padding:30px;">${err.message}</td></tr>`;
+      }
+    }
+
+    function fmtDate(d) {
+      return d ? new Date(d).toLocaleString([], { dateStyle:'short', timeStyle:'short' }) : '—';
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>
