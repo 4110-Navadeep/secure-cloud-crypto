@@ -95,7 +95,7 @@ function renderSidebar() {
             <div class="user-name" style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${userName}</div>
             <div class="user-role" style="font-size:10px; color:var(--text-muted);">${userRole}</div>
             ${loggedIn ? `
-            <a href="#" data-action="logout" style="color:#ef4444; font-size:11px; font-weight:600; text-decoration:none; margin-top:4px;">Logout ↩</a>
+            <button type="button" data-action="logout" style="background:none; border:none; padding:0; cursor:pointer; color:#ef4444; font-size:11px; font-weight:600; font-family:inherit; text-decoration:none; margin-top:4px; display:inline;">Logout ↩</button>
             ` : `
             <a href="/login.html" style="color:var(--accent-cyan); font-size:11px; font-weight:600; text-decoration:none; margin-top:4px;">Login →</a>
             `}
@@ -112,22 +112,16 @@ function initSidebar(currentPage) {
   if (placeholder) {
     placeholder.innerHTML = renderSidebar();
 
-    // Attach logout handler via event delegation after the HTML is in the DOM.
-    // This is necessary because the sidebar is injected dynamically via innerHTML,
-    // and inline onclick handlers in innerHTML content are unreliable in strict
-    // browser security contexts.
-    const logoutLink = placeholder.querySelector('[data-action="logout"]');
-    if (logoutLink) {
-      logoutLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        if (typeof window.logout === 'function') {
-          window.logout();
-        } else {
-          // Fallback: clear session manually and redirect
-          localStorage.removeItem('sc_auth_token');
-          localStorage.removeItem('sc_auth_user');
-          window.location.href = '/login.html';
-        }
+    // Attach logout handler after sidebar HTML is injected into the DOM.
+    // Uses data-action="logout" to target the button without relying on
+    // an href or inline onclick attribute.
+    const logoutBtn = placeholder.querySelector('[data-action="logout"]');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', function() {
+        // Reuse existing auth.js clearSession() to wipe both token and user data
+        localStorage.removeItem('sc_auth_token');
+        localStorage.removeItem('sc_auth_user');
+        window.location.href = '/login.html';
       });
     }
   }

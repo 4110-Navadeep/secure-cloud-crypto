@@ -59,8 +59,17 @@ const cryptoLimiter = rateLimit({
 app.use('/api/crypto', cryptoLimiter);
 
 // ---------------------------------------------------------------------------
-// Static Files
+// Static Files — JS served no-cache so edits take effect immediately;
 // ---------------------------------------------------------------------------
+// other assets (CSS, images, fonts) keep a short cache for performance.
+app.use('/js', express.static(path.join(__dirname, '..', 'public', 'js'), {
+  index: false,
+  etag: true,
+  lastModified: true,
+  setHeaders(res) {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  },
+}));
 app.use(express.static(path.join(__dirname, '..', 'public'), {
   index: false,
   maxAge: '1h',
