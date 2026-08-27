@@ -47,7 +47,7 @@
 
       <div class="auth-footer-links" style="justify-content: space-between;">
         <a href="/login.html" class="auth-link">User Login</a>
-        <a href="javascript:void(0)" onclick="toggleTab('setup-tab')" class="auth-link" style="color:#b39ddb;">Bootstrap Admin</a>
+        <a href="#" id="bootstrap-admin-link" class="auth-link" style="color:#b39ddb;">Bootstrap Admin</a>
       </div>
     </div>
 
@@ -88,7 +88,7 @@
       </form>
 
       <div class="auth-footer-links" style="justify-content: center;">
-        <a href="javascript:void(0)" onclick="toggleTab('login-tab')" class="auth-link">Back to Admin Login</a>
+        <a href="#" id="back-to-login-link" class="auth-link">Back to Admin Login</a>
       </div>
     </div>
   </div>
@@ -105,6 +105,17 @@
       document.getElementById('setup-tab').classList.add('hidden');
       document.getElementById(id).classList.remove('hidden');
     }
+
+    // Attach Bootstrap Admin and Back to Login via addEventListener (not inline onclick)
+    document.getElementById('bootstrap-admin-link').addEventListener('click', function(e) {
+      e.preventDefault();
+      toggleTab('setup-tab');
+    });
+
+    document.getElementById('back-to-login-link').addEventListener('click', function(e) {
+      e.preventDefault();
+      toggleTab('login-tab');
+    });
 
     // Login Form
     const loginForm = document.getElementById('admin-login-form');

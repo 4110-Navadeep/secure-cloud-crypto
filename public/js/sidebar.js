@@ -95,7 +95,7 @@ function renderSidebar() {
             <div class="user-name" style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${userName}</div>
             <div class="user-role" style="font-size:10px; color:var(--text-muted);">${userRole}</div>
             ${loggedIn ? `
-            <a href="javascript:void(0)" onclick="logout()" style="color:#ef4444; font-size:11px; font-weight:600; text-decoration:none; margin-top:4px;">Logout ↩</a>
+            <a href="#" data-action="logout" style="color:#ef4444; font-size:11px; font-weight:600; text-decoration:none; margin-top:4px;">Logout ↩</a>
             ` : `
             <a href="/login.html" style="color:var(--accent-cyan); font-size:11px; font-weight:600; text-decoration:none; margin-top:4px;">Login →</a>
             `}
@@ -111,6 +111,25 @@ function initSidebar(currentPage) {
   const placeholder = document.getElementById('sidebar-placeholder');
   if (placeholder) {
     placeholder.innerHTML = renderSidebar();
+
+    // Attach logout handler via event delegation after the HTML is in the DOM.
+    // This is necessary because the sidebar is injected dynamically via innerHTML,
+    // and inline onclick handlers in innerHTML content are unreliable in strict
+    // browser security contexts.
+    const logoutLink = placeholder.querySelector('[data-action="logout"]');
+    if (logoutLink) {
+      logoutLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (typeof window.logout === 'function') {
+          window.logout();
+        } else {
+          // Fallback: clear session manually and redirect
+          localStorage.removeItem('sc_auth_token');
+          localStorage.removeItem('sc_auth_user');
+          window.location.href = '/login.html';
+        }
+      });
+    }
   }
 
   // Highlight active page

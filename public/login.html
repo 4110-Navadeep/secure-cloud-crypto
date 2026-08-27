@@ -37,7 +37,7 @@
       </form>
 
       <div class="auth-footer-links">
-        <a href="javascript:void(0)" onclick="showToast('Password recovery is offline. Please contact an admin.','warning')" class="auth-link">Forgot Password?</a>
+        <a href="#" id="forgot-password-link" class="auth-link">Forgot Password?</a>
         <a href="/register.html" class="auth-link">Create Account</a>
       </div>
 
@@ -54,6 +54,12 @@
     if (isLoggedIn()) {
       window.location.href = '/dashboard.html';
     }
+
+    // Forgot Password — use addEventListener instead of inline onclick
+    document.getElementById('forgot-password-link').addEventListener('click', function(e) {
+      e.preventDefault();
+      showToast('Password recovery is offline. Please contact an admin.', 'warning');
+    });
 
     const form = document.getElementById('login-form');
     const submitBtn = document.getElementById('submit-btn');
