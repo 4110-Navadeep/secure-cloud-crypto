@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integrity &amp; Authenticity — Secure Crypt</title>
+  <meta name="description" content="Learn how Secure Crypt ensures file integrity via SHA-256 and proves authentic origin with RSA-SHA256 digital signatures.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .ia-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.25rem; }
+    @media (max-width: 860px) { .ia-grid { grid-template-columns: 1fr; } }
+    .ia-card {
+      border-radius: 16px; padding: 1.75rem;
+      position: relative; overflow: hidden;
+    }
+    .ia-card.integrity {
+      background: linear-gradient(135deg, rgba(0,180,216,0.08), rgba(0,0,0,0));
+      border: 1px solid rgba(0,180,216,0.2);
+    }
+    .ia-card.authenticity {
+      background: linear-gradient(135deg, rgba(251,191,36,0.08), rgba(0,0,0,0));
+      border: 1px solid rgba(251,191,36,0.2);
+    }
+    .ia-card::after {
+      content: ''; position: absolute; bottom: -40px; right: -40px;
+      width: 120px; height: 120px; border-radius: 50%; opacity: 0.04;
+    }
+    .ia-card.integrity::after { background: #00b4d8; }
+    .ia-card.authenticity::after { background: #fbbf24; }
+    .ia-icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+    .ia-title { font-size: 1.2rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.4rem; }
+    .ia-subtitle { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1rem; }
+    .ia-card.integrity .ia-subtitle { color: #00b4d8; }
+    .ia-card.authenticity .ia-subtitle { color: #fbbf24; }
+    .ia-desc { font-size: 0.85rem; color: #94a3b8; line-height: 1.65; margin-bottom: 1.25rem; }
+    .ia-flow { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem; }
+    .ia-flow-step {
+      display: flex; align-items: flex-start; gap: 0.75rem;
+      padding: 0.6rem 0.875rem; border-radius: 8px; font-size: 0.8rem; color: #cbd5e1;
+      background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);
+    }
+    .ia-flow-step .step-num {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 700;
+    }
+    .ia-card.integrity .ia-flow-step .step-num { background: rgba(0,180,216,0.15); color: #00b4d8; border: 1px solid rgba(0,180,216,0.3); }
+    .ia-card.authenticity .ia-flow-step .step-num { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .ia-result {
+      display: flex; gap: 0.75rem; padding: 0.75rem 1rem;
+      border-radius: 10px; align-items: flex-start;
+    }
+    .ia-result.pass { background: rgba(56,189,148,0.08); border: 1px solid rgba(56,189,148,0.2); }
+    .ia-result.fail { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); }
+    .ia-result-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .ia-result-text { font-size: 0.8rem; color: #94a3b8; line-height: 1.5; }
+    .ia-result-text strong { display: block; margin-bottom: 0.15rem; }
+    .ia-result.pass .ia-result-text strong { color: #38bd94; }
+    .ia-result.fail .ia-result-text strong { color: #ef4444; }
+    .comparison-card {
+      margin-top: 1.5rem;
+    }
+    .comparison-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+    .comparison-table th {
+      padding: 0.6rem 1rem; text-align: left;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      color: #64748b; border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .comparison-table td {
+      padding: 0.7rem 1rem; font-size: 0.82rem; color: #94a3b8;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .comparison-table tr:last-child td { border-bottom: none; }
+    .comparison-table td:first-child { color: #cbd5e1; font-weight: 500; }
+    .check { color: #38bd94; }
+    .cross { color: #64748b; }
+  </style>
+</head>
+<body class="app-body">
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">&#9776;</button>
+          <h1 class="page-title">Integrity &amp; Authenticity</h1>
+        </div>
+        <div class="header-actions">
+          <span class="security-status verified"><span class="dot"></span> SHA-256 &middot; RSA-SHA256</span>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <div class="page-header">
+          <div class="page-header-inner">
+            <h2 class="page-title">&#128737; Integrity &amp; Authenticity</h2>
+            <span class="module-badge">SECURITY GUARANTEES</span>
+          </div>
+          <p class="page-subtitle">
+            Secure Crypt provides two independent security layers beyond encryption: tamper detection via SHA-256 hashing,
+            and optional origin proof via RSA-SHA256 digital signatures.
+          </p>
+        </div>
+
+        <div class="ia-grid">
+
+          <!-- INTEGRITY -->
+          <div class="ia-card integrity">
+            <span class="ia-icon">&#128737;</span>
+            <div class="ia-title">File Integrity</div>
+            <div class="ia-subtitle">SHA-256 Tamper Detection</div>
+            <div class="ia-desc">
+              A SHA-256 hash of the original file is computed <em>before</em> encryption and embedded in the <code>.secure</code> package.
+              Upon decryption, the recovered file is re-hashed and the digests are compared. Any modification to the ciphertext &mdash; even a single bit &mdash; will
+              produce a different hash and block file download.
+            </div>
+            <div class="ia-flow">
+              <div class="ia-flow-step"><div class="step-num">1</div>Hash original file with SHA-256 before encryption</div>
+              <div class="ia-flow-step"><div class="step-num">2</div>Embed hash in <code>.secure</code> package alongside ciphertext</div>
+              <div class="ia-flow-step"><div class="step-num">3</div>On decryption, re-hash the recovered plaintext</div>
+              <div class="ia-flow-step"><div class="step-num">4</div>Compare stored hash vs. computed hash byte-by-byte</div>
+            </div>
+            <div class="ia-result pass">
+              <span class="ia-result-icon">&#10003;</span>
+              <div class="ia-result-text">
+                <strong>Hashes Match &rarr; File Intact</strong>
+                The decrypted file is identical to the original. Download is allowed.
+              </div>
+            </div>
+            <div class="ia-result fail" style="margin-top:0.5rem;">
+              <span class="ia-result-icon">&#10007;</span>
+              <div class="ia-result-text">
+                <strong>Hash Mismatch &rarr; Tampered</strong>
+                Download is blocked. The package was modified after encryption.
+              </div>
+            </div>
+            <div style="margin-top:1rem;font-size:0.75rem;color:#64748b;font-family:'JetBrains Mono',monospace;background:rgba(0,0,0,0.2);padding:0.5rem 0.75rem;border-radius:6px;">
+              SHA-256 Output: 64 hex chars (256 bits)
+            </div>
+          </div>
+
+          <!-- AUTHENTICITY -->
+          <div class="ia-card authenticity">
+            <span class="ia-icon">&#9997;&#65039;</span>
+            <div class="ia-title">Origin Authenticity</div>
+            <div class="ia-subtitle">RSA-SHA256 Digital Signature</div>
+            <div class="ia-desc">
+              When the digital signature option is enabled, the SHA-256 file hash is signed using the RSA-2048 private key.
+              The signature and the corresponding public key are embedded in the package. The recipient verifies the signature to confirm
+              the package was created by the original encryptor &mdash; not just that it is intact.
+            </div>
+            <div class="ia-flow">
+              <div class="ia-flow-step"><div class="step-num">1</div>Compute SHA-256 hash of file (shared with integrity check)</div>
+              <div class="ia-flow-step"><div class="step-num">2</div>Sign hash using RSA-2048 private key (PKCS#1 v1.5)</div>
+              <div class="ia-flow-step"><div class="step-num">3</div>Embed signature + signer public key in package</div>
+              <div class="ia-flow-step"><div class="step-num">4</div>On verify: use public key to verify signature against hash</div>
+            </div>
+            <div class="ia-result pass">
+              <span class="ia-result-icon">&#10003;</span>
+              <div class="ia-result-text">
+                <strong>Signature Valid &rarr; Authentic Origin</strong>
+                Proves the file came from the original encryptor. Nobody else could have generated this signature.
+              </div>
+            </div>
+            <div class="ia-result fail" style="margin-top:0.5rem;">
+              <span class="ia-result-icon">&#8505;</span>
+              <div class="ia-result-text" style="color:#94a3b8;">
+                <strong style="color:#94a3b8;">No Signature &rarr; Not Enabled</strong>
+                The package was encrypted without a signature. Integrity is still verified but origin is unconfirmed.
+              </div>
+            </div>
+            <div style="margin-top:1rem;font-size:0.75rem;color:#64748b;font-family:'JetBrains Mono',monospace;background:rgba(0,0,0,0.2);padding:0.5rem 0.75rem;border-radius:6px;">
+              Signature: RSA-SHA256, 2048-bit key, PKCS#1 v1.5
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Comparison Table -->
+        <div class="glass-card comparison-card">
+          <div class="glass-card-header">
+            <div class="card-title-row">
+              <span class="card-icon">&#128203;</span>
+              <h2 class="card-title">Security Guarantee Comparison</h2>
+            </div>
+          </div>
+          <div class="glass-card-body">
+            <table class="comparison-table">
+              <thead>
+                <tr>
+                  <th>Guarantee</th>
+                  <th>AES-256-GCM Auth Tag</th>
+                  <th>SHA-256 Hash</th>
+                  <th>RSA-SHA256 Signature</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Confidentiality (no one reads file)</td>
+                  <td class="check">&#10003; Yes</td>
+                  <td class="cross">&mdash;</td>
+                  <td class="cross">&mdash;</td>
+                </tr>
+                <tr>
+                  <td>Tamper detection (file unchanged)</td>
+                  <td class="check">&#10003; Yes</td>
+                  <td class="check">&#10003; Yes</td>
+                  <td class="cross">&mdash;</td>
+                </tr>
+                <tr>
+                  <td>Origin proof (who encrypted it)</td>
+                  <td class="cross">&mdash;</td>
+                  <td class="cross">&mdash;</td>
+                  <td class="check">&#10003; Yes</td>
+                </tr>
+                <tr>
+                  <td>Non-repudiation</td>
+                  <td class="cross">&mdash;</td>
+                  <td class="cross">&mdash;</td>
+                  <td class="check">&#10003; Yes</td>
+                </tr>
+                <tr>
+                  <td>Works without passphrase</td>
+                  <td class="cross">&mdash;</td>
+                  <td class="cross">&mdash;</td>
+                  <td class="check">&#10003; Public key only</td>
+                </tr>
+                <tr>
+                  <td>Always enabled</td>
+                  <td class="check">&#10003; Yes</td>
+                  <td class="check">&#10003; Yes</td>
+                  <td class="cross">Optional</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/js/sidebar.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initSidebar('integrity');
+    });
+  </script>
+</body>
+</html>

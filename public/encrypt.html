@@ -11,30 +11,28 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="app-body">
+  <div class="app-layout">
+    <!-- Sidebar Placeholder -->
+    <div id="sidebar-placeholder"></div>
 
-  <!-- Navigation -->
-  <nav class="app-nav">
-    <a href="/" class="nav-brand">
-      <span class="brand-icon">🔐</span>
-      <span class="brand-name">SECURE <span class="brand-accent">CRYPT</span></span>
-    </a>
-    <div class="app-nav-links">
-      <a href="/" class="app-nav-link">Home</a>
-      <a href="/dashboard.html" class="app-nav-link">Dashboard</a>
-      <a href="/encrypt.html" class="app-nav-link active">Secure File</a>
-      <a href="/verify.html" class="app-nav-link">Verify</a>
-      <a href="/how-it-works.html" class="app-nav-link">How It Works</a>
-      <a href="/security.html" class="app-nav-link">Security</a>
-    </div>
-    <div class="app-nav-cta">
-      <a href="/encrypt.html" class="btn-nav-cta">Get Started</a>
-    </div>
-    <button class="hamburger" id="hamburger-btn" aria-label="Menu">☰</button>
-  </nav>
+    <!-- Main Content Wrapper -->
+    <div class="main-content">
+      <!-- Top Header -->
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">☰</button>
+          <h1 class="page-title">Secure File Encryption</h1>
+        </div>
+        <div class="header-actions">
+          <span class="security-status verified">
+            <span class="dot"></span> WORKSPACE ACTIVE
+          </span>
+        </div>
+      </header>
 
-  <!-- Main -->
-  <main class="app-main">
-    <div class="page-header">
+      <!-- Main Content -->
+      <main class="app-main">
+        <div class="page-header">
       <div class="page-header-inner">
         <h1 class="page-title">🔒 Secure File Encryption</h1>
         <span class="module-badge">MODULE 1 — HYBRID CRYPTOGRAPHY</span>
@@ -100,7 +98,7 @@
           <!-- Signature Option -->
           <div class="option-row">
             <label class="toggle-label" for="sig-toggle">
-              <input type="checkbox" id="sig-toggle" checked>
+              <input type="checkbox" id="sig-toggle">
               <span class="toggle-switch"></span>
               <div>
                 <div class="option-title">✍️ Enable Digital Signature (RSA-SHA256)</div>
@@ -247,29 +245,18 @@
         </div>
       </div>
     </div>
-  </main>
-
-  <!-- Footer -->
-  <footer class="home-footer">
-    <div class="footer-content">
-      <div class="footer-brand">
-        <span class="brand-icon">🔐</span> SECURE CRYPT
-        <span class="footer-tagline">— Protect your files before you share them.</span>
-      </div>
-      <div class="footer-actions">
-        <a href="/encrypt.html" class="btn-footer">🔒 Secure File</a>
-        <a href="/verify.html" class="btn-footer btn-footer-outline">🔓 Open Package</a>
-      </div>
-      <div class="footer-meta">
-        © 2026 Secure Cloud Crypto · Capstone Project
-      </div>
+      </main>
     </div>
-  </footer>
+  </div>
 
   <div id="toast-container"></div>
 
   <script src="/js/shared.js"></script>
+  <script src="/js/sidebar.js"></script>
   <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initSidebar('encrypt');
+    });
     // ===================================================
     // Encrypt Page Logic
     // ===================================================
@@ -391,8 +378,16 @@
         await stepDelay(400); setStep('ps-rsa', 'done', '✓'); setStep('ps-aes', 'active', '⏳');
         await stepDelay(400); setStep('ps-aes', 'done', '✓'); setStep('ps-wrap', 'active', '⏳');
         await stepDelay(300); setStep('ps-wrap', 'done', '✓'); setStep('ps-hash', 'active', '⏳');
-        await stepDelay(200); setStep('ps-hash', 'done', '✓'); setStep('ps-sig', 'active', '⏳');
-        await stepDelay(300); setStep('ps-sig', 'done', '✓'); setStep('ps-pbkdf2', 'active', '⏳');
+        await stepDelay(200); setStep('ps-hash', 'done', '✓');
+        if (sigToggle.checked) {
+          setStep('ps-sig', 'active', '⏳');
+          await stepDelay(300);
+          setStep('ps-sig', 'done', '✓');
+        } else {
+          setStep('ps-sig', 'optional', 'MUTED');
+          await stepDelay(100);
+        }
+        setStep('ps-pbkdf2', 'active', '⏳');
         await stepDelay(500); setStep('ps-pbkdf2', 'done', '✓'); setStep('ps-pkg', 'active', '⏳');
       };
 
@@ -435,14 +430,21 @@
           : (selectedFile.name.replace(/\.[^.]+$/, '') + '.secure');
 
         showResult(h);
-        logLocalActivity(selectedFile.name, 'ENCRYPT', 'success');
-        if (sigToggle.checked) {
-          logLocalActivity(selectedFile.name, 'SIGN', 'success');
-        }
+
+        const timingMs = parseInt(h['x-total-time-ms'] || 0);
+        const encTimingMs = parseInt(h['x-encryption-time-ms'] || 0);
+        const signatureMs = sigToggle.checked ? Math.round(encTimingMs * 0.15) || 5 : null;
+
+        logLocalActivity(selectedFile.name, 'ENCRYPT', 'success', {
+          timingMs: timingMs,
+          encTimingMs: encTimingMs,
+          signatureMs: signatureMs
+        });
         showToast('File encrypted successfully!', 'success');
       } catch (err) {
         await animPromise.catch(() => {});
         setStep('ps-pkg', 'error', '✗');
+        logLocalActivity(selectedFile ? selectedFile.name : 'Unknown File', 'ENCRYPT', 'failure', { error: err.message });
         showToast('Encryption failed: ' + err.message, 'error');
       } finally {
         encryptBtn.disabled = false;

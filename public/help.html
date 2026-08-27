@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Help &amp; Support — Secure Crypt</title>
+  <meta name="description" content="Cryptographic usage documentation, FAQ, and offline diagnostic reporting for Secure Crypt.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .help-tabs { display: flex; gap: 0.25rem; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 0; }
+    .help-tab {
+      padding: 0.6rem 1.1rem; font-size: 0.82rem; font-weight: 500; color: #64748b;
+      border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.15s;
+      margin-bottom: -1px; font-family: inherit; background: none; border-left: none; border-right: none; border-top: none;
+    }
+    .help-tab:hover { color: #94a3b8; }
+    .help-tab.active { color: #00b4d8; border-bottom-color: #00b4d8; }
+    .help-panel { display: none; }
+    .help-panel.active { display: block; }
+
+    /* FAQ */
+    .faq-item {
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px; margin-bottom: 0.5rem; overflow: hidden;
+    }
+    .faq-question {
+      padding: 1rem 1.25rem; font-size: 0.88rem; font-weight: 500; color: #cbd5e1;
+      cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+      transition: background 0.15s; user-select: none;
+    }
+    .faq-question:hover { background: rgba(255,255,255,0.03); }
+    .faq-chevron { color: #4a5568; transition: transform 0.25s; font-size: 0.75rem; }
+    .faq-item.open .faq-chevron { transform: rotate(180deg); color: #00b4d8; }
+    .faq-item.open .faq-question { color: #00b4d8; background: rgba(0,180,216,0.04); }
+    .faq-answer {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+      font-size: 0.83rem; color: #94a3b8; line-height: 1.7;
+      padding: 0 1.25rem;
+    }
+    .faq-item.open .faq-answer { max-height: 300px; padding: 0.75rem 1.25rem 1.25rem; }
+
+    /* Docs */
+    .doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 720px) { .doc-grid { grid-template-columns: 1fr; } }
+    .doc-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px; padding: 1.25rem;
+      transition: border-color 0.2s;
+    }
+    .doc-card:hover { border-color: rgba(0,180,216,0.3); }
+    .doc-card-title { font-size: 0.9rem; font-weight: 600; color: #e2e8f0; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.5rem; }
+    .doc-card-desc { font-size: 0.8rem; color: #94a3b8; line-height: 1.6; }
+    .code-step {
+      background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px; padding: 0.875rem 1rem; margin-top: 0.75rem;
+      font-size: 0.78rem; font-family: 'JetBrains Mono', monospace; color: #94a3b8; line-height: 1.7;
+    }
+    .code-step span { color: #00b4d8; }
+
+    /* Diagnostics */
+    .diag-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px; padding: 1.5rem; margin-bottom: 1.25rem;
+    }
+    .diag-card-title { font-size: 0.9rem; font-weight: 600; color: #e2e8f0; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+    .diag-card-desc { font-size: 0.82rem; color: #94a3b8; margin-bottom: 1rem; line-height: 1.6; }
+    .diag-report {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #64748b;
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px; padding: 1rem; line-height: 1.8; white-space: pre-wrap; word-break: break-all;
+      max-height: 260px; overflow-y: auto; margin-bottom: 1rem;
+    }
+    .btn-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  </style>
+</head>
+<body class="app-body">
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">&#9776;</button>
+          <h1 class="page-title">Help &amp; Support</h1>
+        </div>
+        <div class="header-actions">
+          <span class="security-status verified"><span class="dot"></span> DOCS &amp; DIAGNOSTICS</span>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <div class="page-header">
+          <div class="page-header-inner">
+            <h2 class="page-title">&#128218; Help &amp; Support</h2>
+            <span class="module-badge">DOCUMENTATION &amp; TROUBLESHOOTING</span>
+          </div>
+          <p class="page-subtitle">
+            Usage guides, frequently asked questions, and offline diagnostic report generation.
+          </p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="help-tabs">
+          <button class="help-tab active" data-tab="faq">FAQ</button>
+          <button class="help-tab" data-tab="docs">Usage Guide</button>
+          <button class="help-tab" data-tab="diag">Diagnostics</button>
+        </div>
+
+        <!-- FAQ Panel -->
+        <div class="help-panel active" id="panel-faq">
+          <div class="faq-item">
+            <div class="faq-question">What is a <code>.secure</code> package? <span class="faq-chevron">&#9660;</span></div>
+            <div class="faq-answer">A <code>.secure</code> file is a self-contained JSON package containing your encrypted file and all cryptographic material needed to decrypt it &mdash; ciphertext, IV, auth tag, RSA-wrapped AES key, PBKDF2-protected private key, SHA-256 hash, and an optional digital signature. You can share it via any channel: email, USB, cloud storage.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question">Is my file ever stored on the server? <span class="faq-chevron">&#9660;</span></div>
+            <div class="faq-answer">No. The server processes your file entirely in memory using multipart upload streams. Nothing is written to disk. After the API returns the encrypted package, all in-memory data is garbage collected.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question">What happens if I use the wrong passphrase? <span class="faq-chevron">&#9660;</span></div>
+            <div class="faq-answer">The PBKDF2 derivation will produce the wrong key, which will fail to decrypt the embedded RSA private key. The RSA private key then fails to unwrap the AES key, and decryption is aborted. You'll receive a "Decryption failed" error. No partial file is ever produced.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question">What does "Integrity Check Failed" mean? <span class="faq-chevron">&#9660;</span></div>
+            <div class="faq-answer">This means the SHA-256 hash of the decrypted file does not match the hash stored inside the <code>.secure</code> package. This indicates the ciphertext was tampered with after encryption. The file download is blocked to protect you from receiving a corrupted or maliciously modified file.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question">Do I need the digital signature? <span class="faq-chevron">&#9660;</span></div>
+            <div class="faq-answer">Digital signatures are optional. They add <em>authenticity</em> (proof of who encrypted the file) on top of the always-present <em>integrity</em> guarantee (proof the file wasn't tampered with). If you just want confidentiality and tamper detection, signatures are not needed. Enable them when you also want to prove origin.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question">What encryption standards are used? <span class="faq-chevron">&#9660;</span></div>
+            <div class="faq-answer">AES-256-GCM (NIST FIPS 197 / SP 800-38D) for file encryption, RSA-2048-OAEP with SHA-256 (PKCS#1) for key wrapping, SHA-256 (FIPS 180-4) for integrity hashing, RSA-SHA256 (PKCS#1 v1.5) for optional digital signatures, and PBKDF2-HMAC-SHA256 (RFC 8018) with 100,000 iterations for passphrase key derivation.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question">What file types and sizes are supported? <span class="faq-chevron">&#9660;</span></div>
+            <div class="faq-answer">Any file type is supported &mdash; documents, images, archives, binaries. File size is limited by the server's configured upload limit (default 500 MB via multer). The AES-256-GCM cipher works on any binary data regardless of format.</div>
+          </div>
+        </div>
+
+        <!-- Usage Guide Panel -->
+        <div class="help-panel" id="panel-docs">
+          <div class="doc-grid">
+            <div class="doc-card">
+              <div class="doc-card-title">&#128274; Encrypting a File</div>
+              <div class="doc-card-desc">Go to <strong>Secure File</strong> in the sidebar. Upload any file, enter a strong passphrase, optionally enable digital signature, then click <em>Encrypt &amp; Download</em>.</div>
+              <div class="code-step">
+                <span>Step 1:</span> Select file via drag-and-drop or browse<br>
+                <span>Step 2:</span> Enter passphrase (min. 8 chars recommended)<br>
+                <span>Step 3:</span> Toggle digital signature (optional)<br>
+                <span>Step 4:</span> Click Encrypt &amp; Download Package<br>
+                <span>Output:</span> filename.secure (JSON package)
+              </div>
+            </div>
+            <div class="doc-card">
+              <div class="doc-card-title">&#128275; Decrypting a Package</div>
+              <div class="doc-card-desc">Go to <strong>Open Package</strong> in the sidebar. Upload the <code>.secure</code> file, enter the exact passphrase, then click <em>Decrypt &amp; Download</em>.</div>
+              <div class="code-step">
+                <span>Step 1:</span> Upload .secure file<br>
+                <span>Step 2:</span> Enter the original passphrase<br>
+                <span>Step 3:</span> Click Decrypt &amp; Download File<br>
+                <span>Step 4:</span> Integrity &#10003; and Signature &#10003; shown<br>
+                <span>Output:</span> Original file restored
+              </div>
+            </div>
+            <div class="doc-card">
+              <div class="doc-card-title">&#128737; Integrity Verification</div>
+              <div class="doc-card-desc">Every decryption automatically verifies the SHA-256 hash. If the package was modified, decryption is blocked and you'll see "Integrity Check Failed".</div>
+              <div class="code-step">
+                <span>PASS:</span> Hash matches &rarr; file intact &#10003;<br>
+                <span>FAIL:</span> Hash mismatch &rarr; tamper detected &#10007;<br>
+                Action: Download is blocked on FAIL
+              </div>
+            </div>
+            <div class="doc-card">
+              <div class="doc-card-title">&#9997; Signature Verification</div>
+              <div class="doc-card-desc">If a signature was included, the verify page shows Signature Verified or Not Enabled. Verification uses the signer's public key embedded in the package.</div>
+              <div class="code-step">
+                <span>VERIFIED:</span> RSA-SHA256 matches &rarr; authentic &#10003;<br>
+                <span>NOT ENABLED:</span> No signature in package<br>
+                <span>FAILED:</span> Signature invalid &rarr; warning &#9888;
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Diagnostics Panel -->
+        <div class="help-panel" id="panel-diag">
+          <div class="diag-card">
+            <div class="diag-card-title">&#128196; Diagnostic Report Generator</div>
+            <div class="diag-card-desc">
+              Generate an offline diagnostic report containing your session activity log and system information.
+              This report can be copied and shared with a developer for troubleshooting. No data is sent anywhere.
+            </div>
+            <div class="diag-report" id="diag-report">Click "Generate Report" to create a diagnostic snapshot.</div>
+            <div class="btn-row">
+              <button class="btn-primary" id="gen-report-btn">&#9889; Generate Report</button>
+              <button class="btn-outline" id="copy-report-btn" disabled>&#128203; Copy to Clipboard</button>
+              <button class="btn-outline" id="dl-report-btn" disabled>&#8681; Download .txt</button>
+            </div>
+          </div>
+
+          <div class="diag-card">
+            <div class="diag-card-title">&#9881; System Checks</div>
+            <div class="diag-card-desc">Browser-level capability checks for the cryptographic APIs used by this application.</div>
+            <div id="sys-checks" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem;"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/js/shared.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initSidebar('help');
+
+      // Tabs
+      document.querySelectorAll('.help-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.help-tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.help-panel').forEach(p => p.classList.remove('active'));
+          tab.classList.add('active');
+          document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+        });
+      });
+
+      // FAQ accordion
+      document.querySelectorAll('.faq-item').forEach(item => {
+        item.querySelector('.faq-question').addEventListener('click', () => {
+          const wasOpen = item.classList.contains('open');
+          document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+          if (!wasOpen) item.classList.add('open');
+        });
+      });
+
+      // System Checks
+      runChecks();
+    });
+
+    function runChecks() {
+      const checks = [
+        { label: 'SubtleCrypto API', ok: !!window.crypto?.subtle },
+        { label: 'localStorage Available', ok: (() => { try { localStorage.setItem('_t','1'); localStorage.removeItem('_t'); return true; } catch(e) { return false; } })() },
+        { label: 'Fetch API', ok: !!window.fetch },
+        { label: 'File API / FileReader', ok: !!window.FileReader },
+        { label: 'Blob Download', ok: !!window.URL?.createObjectURL },
+        { label: 'Secure Context (HTTPS/localhost)', ok: window.isSecureContext },
+      ];
+      document.getElementById('sys-checks').innerHTML = checks.map(c => `
+        <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.02);border-radius:6px;">
+          <span style="color:${c.ok ? '#38bd94' : '#ef4444'};font-size:1rem;">${c.ok ? '&#10003;' : '&#10007;'}</span>
+          <span style="font-size:0.82rem;color:${c.ok ? '#94a3b8' : '#ef4444'};">${c.label}</span>
+          <span style="margin-left:auto;font-size:0.72rem;color:${c.ok ? '#38bd94' : '#ef4444'};font-family:'JetBrains Mono',monospace;">${c.ok ? 'PASS' : 'FAIL'}</span>
+        </div>`).join('');
+    }
+
+    let reportText = '';
+    document.getElementById('gen-report-btn').addEventListener('click', () => {
+      const activity = getLocalActivity();
+      const now = new Date().toISOString();
+      const lines = [
+        '=== SECURE CRYPT DIAGNOSTIC REPORT ===',
+        'Generated: ' + now,
+        'User Agent: ' + navigator.userAgent,
+        'URL: ' + window.location.origin,
+        'Secure Context: ' + window.isSecureContext,
+        '',
+        '--- SESSION ACTIVITY LOG ---',
+        'Total Events: ' + activity.length,
+        ...activity.map((a,i) => `[${i+1}] ${a.timestamp} | ${a.operation} | ${a.filename} | ${a.status}`),
+        '',
+        '--- END OF REPORT ---',
+      ];
+      reportText = lines.join('\n');
+      document.getElementById('diag-report').textContent = reportText;
+      document.getElementById('copy-report-btn').disabled = false;
+      document.getElementById('dl-report-btn').disabled = false;
+    });
+
+    document.getElementById('copy-report-btn').addEventListener('click', () => {
+      navigator.clipboard.writeText(reportText).then(() => alert('Report copied to clipboard.'));
+    });
+
+    document.getElementById('dl-report-btn').addEventListener('click', () => {
+      const blob = new Blob([reportText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'secure-crypt-diagnostic.txt'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+</html>

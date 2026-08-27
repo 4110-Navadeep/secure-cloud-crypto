@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Key Management — Secure Crypt</title>
+  <meta name="description" content="Technical reference for cryptographic keys used in Secure Crypt: AES-256-GCM, RSA-2048, SHA-256, RSA-SHA256, and PBKDF2.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .key-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 1.25rem; }
+    @media (max-width: 860px) { .key-grid { grid-template-columns: 1fr; } }
+    .key-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px; padding: 1.5rem;
+      transition: border-color 0.2s, transform 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .key-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      border-radius: 14px 14px 0 0;
+    }
+    .key-card.blue::before { background: linear-gradient(90deg, #00b4d8, transparent); }
+    .key-card.cyan::before { background: linear-gradient(90deg, #06b6d4, transparent); }
+    .key-card.green::before { background: linear-gradient(90deg, #38bd94, transparent); }
+    .key-card.amber::before { background: linear-gradient(90deg, #fbbf24, transparent); }
+    .key-card.violet::before { background: linear-gradient(90deg, #a78bfa, transparent); }
+    .key-card:hover { border-color: rgba(0,180,216,0.3); transform: translateY(-2px); }
+    .key-card-header { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+    .key-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;
+    }
+    .key-icon.blue { background: rgba(0,180,216,0.12); border: 1px solid rgba(0,180,216,0.25); }
+    .key-icon.cyan { background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.25); }
+    .key-icon.green { background: rgba(56,189,148,0.12); border: 1px solid rgba(56,189,148,0.25); }
+    .key-icon.amber { background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.25); }
+    .key-icon.violet { background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.25); }
+    .key-name { font-size: 1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.25rem; }
+    .key-algo {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+      padding: 0.15rem 0.5rem; border-radius: 5px; display: inline-block;
+    }
+    .key-algo.blue { color: #00b4d8; background: rgba(0,180,216,0.1); }
+    .key-algo.cyan { color: #06b6d4; background: rgba(6,182,212,0.1); }
+    .key-algo.green { color: #38bd94; background: rgba(56,189,148,0.1); }
+    .key-algo.amber { color: #fbbf24; background: rgba(251,191,36,0.1); }
+    .key-algo.violet { color: #a78bfa; background: rgba(167,139,250,0.1); }
+    .key-desc { font-size: 0.83rem; color: #94a3b8; line-height: 1.6; margin-bottom: 1rem; }
+    .key-specs { display: flex; flex-direction: column; gap: 0.5rem; }
+    .spec-row { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .spec-row:last-child { border-bottom: none; }
+    .spec-label { font-size: 0.75rem; color: #64748b; }
+    .spec-value { font-size: 0.75rem; font-weight: 600; color: #cbd5e1; font-family: 'JetBrains Mono', monospace; }
+    .key-role {
+      margin-top: 0.75rem; padding: 0.6rem 0.875rem;
+      background: rgba(0,0,0,0.2); border-radius: 8px;
+      font-size: 0.78rem; color: #94a3b8; line-height: 1.5;
+      border-left: 2px solid rgba(0,180,216,0.4);
+    }
+    .key-role.green { border-left-color: rgba(56,189,148,0.4); }
+    .key-role.amber { border-left-color: rgba(251,191,36,0.4); }
+    .key-role.violet { border-left-color: rgba(167,139,250,0.4); }
+  </style>
+</head>
+<body class="app-body">
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">&#9776;</button>
+          <h1 class="page-title">Key Management</h1>
+        </div>
+        <div class="header-actions">
+          <span class="security-status verified"><span class="dot"></span> EPHEMERAL KEYS ONLY</span>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <div class="page-header">
+          <div class="page-header-inner">
+            <h2 class="page-title">&#128273; Cryptographic Keys</h2>
+            <span class="module-badge">KEY ARCHITECTURE REFERENCE</span>
+          </div>
+          <p class="page-subtitle">
+            All cryptographic keys in Secure Crypt are ephemeral &mdash; generated per-request, never persisted on disk.
+            The RSA private key is protected by your passphrase via PBKDF2 before being embedded in the <code>.secure</code> package.
+          </p>
+        </div>
+
+        <div class="key-grid">
+
+          <!-- AES-256-GCM -->
+          <div class="key-card blue">
+            <div class="key-card-header">
+              <div class="key-icon blue">&#128272;</div>
+              <div>
+                <div class="key-name">AES-256-GCM</div>
+                <span class="key-algo blue">Symmetric Encryption</span>
+              </div>
+            </div>
+            <div class="key-desc">
+              The primary data encryption cipher. A fresh 256-bit key is randomly generated for every encryption operation. GCM mode provides both confidentiality and authenticated integrity via a 128-bit authentication tag.
+            </div>
+            <div class="key-specs">
+              <div class="spec-row"><span class="spec-label">Key Size</span><span class="spec-value">256 bits</span></div>
+              <div class="spec-row"><span class="spec-label">IV Size</span><span class="spec-value">96 bits (random)</span></div>
+              <div class="spec-row"><span class="spec-label">Auth Tag</span><span class="spec-value">128 bits</span></div>
+              <div class="spec-row"><span class="spec-label">Lifetime</span><span class="spec-value">Single request</span></div>
+            </div>
+            <div class="key-role">
+              <strong>Role:</strong> Encrypts the file payload. The AES key itself is wrapped by RSA and embedded in the package.
+            </div>
+          </div>
+
+          <!-- RSA-2048-OAEP -->
+          <div class="key-card cyan">
+            <div class="key-card-header">
+              <div class="key-icon cyan">&#128275;</div>
+              <div>
+                <div class="key-name">RSA-2048-OAEP</div>
+                <span class="key-algo cyan">Asymmetric Key Wrapping</span>
+              </div>
+            </div>
+            <div class="key-desc">
+              An RSA-2048 key pair is generated per-request. The public key encrypts (wraps) the AES key. The private key is PBKDF2-encrypted and embedded in the package. OAEP with SHA-256 padding prevents chosen-ciphertext attacks.
+            </div>
+            <div class="key-specs">
+              <div class="spec-row"><span class="spec-label">Key Size</span><span class="spec-value">2048 bits</span></div>
+              <div class="spec-row"><span class="spec-label">Padding</span><span class="spec-value">OAEP / SHA-256</span></div>
+              <div class="spec-row"><span class="spec-label">Public Key</span><span class="spec-value">In package (PEM)</span></div>
+              <div class="spec-row"><span class="spec-label">Private Key</span><span class="spec-value">PBKDF2-encrypted</span></div>
+            </div>
+            <div class="key-role">
+              <strong>Role:</strong> Key transport &mdash; allows the AES key to be securely stored without direct passphrase wrapping.
+            </div>
+          </div>
+
+          <!-- SHA-256 -->
+          <div class="key-card green">
+            <div class="key-card-header">
+              <div class="key-icon green">&#128737;</div>
+              <div>
+                <div class="key-name">SHA-256</div>
+                <span class="key-algo green">Cryptographic Hash Function</span>
+              </div>
+            </div>
+            <div class="key-desc">
+              SHA-256 is used to hash the original file before encryption. The hash is stored in the package and recalculated after decryption. Any tampering with the ciphertext will produce a different hash, blocking file recovery.
+            </div>
+            <div class="key-specs">
+              <div class="spec-row"><span class="spec-label">Output Size</span><span class="spec-value">256 bits (32 bytes)</span></div>
+              <div class="spec-row"><span class="spec-label">Input</span><span class="spec-value">Original file bytes</span></div>
+              <div class="spec-row"><span class="spec-label">When Computed</span><span class="spec-value">Pre-encrypt &amp; post-decrypt</span></div>
+              <div class="spec-row"><span class="spec-label">Collision Resistance</span><span class="spec-value">2^128 operations</span></div>
+            </div>
+            <div class="key-role green">
+              <strong>Role:</strong> Integrity verification &mdash; detects bit-level tampering of the encrypted package.
+            </div>
+          </div>
+
+          <!-- RSA-SHA256 Signature -->
+          <div class="key-card amber">
+            <div class="key-card-header">
+              <div class="key-icon amber">&#9997;</div>
+              <div>
+                <div class="key-name">RSA-SHA256 Signature</div>
+                <span class="key-algo amber">Digital Signature (Optional)</span>
+              </div>
+            </div>
+            <div class="key-desc">
+              When enabled, the SHA-256 file hash is signed using the RSA-2048 private key. The signature and the signer's public key are embedded in the package. The recipient verifies the signature to confirm the file came from the original encryptor.
+            </div>
+            <div class="key-specs">
+              <div class="spec-row"><span class="spec-label">Algorithm</span><span class="spec-value">RSA + SHA-256</span></div>
+              <div class="spec-row"><span class="spec-label">Padding</span><span class="spec-value">PKCS#1 v1.5</span></div>
+              <div class="spec-row"><span class="spec-label">Key</span><span class="spec-value">Same RSA-2048 pair</span></div>
+              <div class="spec-row"><span class="spec-label">Default</span><span class="spec-value">Disabled (opt-in)</span></div>
+            </div>
+            <div class="key-role amber">
+              <strong>Role:</strong> Authenticity proof &mdash; proves the file was encrypted by the original sender, not just that it's intact.
+            </div>
+          </div>
+
+          <!-- PBKDF2 -->
+          <div class="key-card violet" style="grid-column: span 2;">
+            <div class="key-card-header">
+              <div class="key-icon violet">&#128221;</div>
+              <div>
+                <div class="key-name">PBKDF2 Key Derivation</div>
+                <span class="key-algo violet">Password-Based Key Derivation Function 2</span>
+              </div>
+            </div>
+            <div class="key-desc">
+              PBKDF2 transforms the user's passphrase into a strong symmetric key using a random salt and 100,000 iterations of HMAC-SHA256. This derived key encrypts the RSA private key using AES-256-GCM before embedding it in the package. High iteration count makes brute-force attacks computationally expensive.
+            </div>
+            <div class="key-specs" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;">
+              <div class="spec-row"><span class="spec-label">Algorithm</span><span class="spec-value">PBKDF2-HMAC-SHA256</span></div>
+              <div class="spec-row"><span class="spec-label">Iterations</span><span class="spec-value">100,000</span></div>
+              <div class="spec-row"><span class="spec-label">Output Key</span><span class="spec-value">256 bits</span></div>
+              <div class="spec-row"><span class="spec-label">Salt</span><span class="spec-value">128 bits (random)</span></div>
+              <div class="spec-row"><span class="spec-label">Salt Storage</span><span class="spec-value">In package (hex)</span></div>
+              <div class="spec-row"><span class="spec-label">Wraps</span><span class="spec-value">RSA private key</span></div>
+            </div>
+            <div class="key-role violet">
+              <strong>Role:</strong> Password stretching &mdash; transforms a user passphrase into a cryptographically strong key, making brute-force highly resistant.
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/js/sidebar.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initSidebar('key-management');
+    });
+  </script>
+</body>
+</html>

@@ -11,29 +11,27 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="app-body">
+  <div class="app-layout">
+    <!-- Sidebar Placeholder -->
+    <div id="sidebar-placeholder"></div>
 
-  <!-- Navigation -->
-  <nav class="app-nav">
-    <a href="/" class="nav-brand">
-      <span class="brand-icon">🔐</span>
-      <span class="brand-name">SECURE <span class="brand-accent">CRYPT</span></span>
-    </a>
-    <div class="app-nav-links">
-      <a href="/" class="app-nav-link">Home</a>
-      <a href="/dashboard.html" class="app-nav-link">Dashboard</a>
-      <a href="/encrypt.html" class="app-nav-link">Secure File</a>
-      <a href="/verify.html" class="app-nav-link active">Verify</a>
-      <a href="/how-it-works.html" class="app-nav-link">How It Works</a>
-      <a href="/security.html" class="app-nav-link">Security</a>
-    </div>
-    <div class="app-nav-cta">
-      <a href="/encrypt.html" class="btn-nav-cta">Get Started</a>
-    </div>
-    <button class="hamburger" id="hamburger-btn" aria-label="Menu">☰</button>
-  </nav>
+    <!-- Main Content Wrapper -->
+    <div class="main-content">
+      <!-- Top Header -->
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">☰</button>
+          <h1 class="page-title">Open Secure Package</h1>
+        </div>
+        <div class="header-actions">
+          <span class="security-status verified">
+            <span class="dot"></span> WORKSPACE ACTIVE
+          </span>
+        </div>
+      </header>
 
-  <!-- Main Content -->
-  <main class="app-main">
+      <!-- Main Content -->
+      <main class="app-main">
     <div class="page-header">
       <div class="page-header-inner">
         <h1 class="page-title">🔓 Verify File Authenticity</h1>
@@ -211,29 +209,18 @@
         </div>
       </div>
     </div>
-  </main>
-
-  <!-- Footer -->
-  <footer class="home-footer">
-    <div class="footer-content">
-      <div class="footer-brand">
-        <span class="brand-icon">🔐</span> SECURE CRYPT
-        <span class="footer-tagline">— Hybrid Cryptography System</span>
-      </div>
-      <div class="footer-actions">
-        <a href="/encrypt.html" class="btn-footer">🔒 Secure File</a>
-        <a href="/verify.html" class="btn-footer btn-footer-outline">🔓 Open Package</a>
-      </div>
-      <div class="footer-meta">
-        © 2026 Secure Cloud Crypto · Capstone Project
-      </div>
+      </main>
     </div>
-  </footer>
+  </div>
 
   <div id="toast-container"></div>
 
   <script src="/js/shared.js"></script>
+  <script src="/js/sidebar.js"></script>
   <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initSidebar('verify');
+    });
     let selectedPackage = null;
     let decryptedBlob = null;
     let decryptedFilename = '';
@@ -347,20 +334,20 @@
             setStep('ds-parse', 'error', '✗ INVALID');
             showStatusBanner('INVALID PACKAGE', 'error',
               errData.message || 'This file is not a valid .secure package.');
-            logLocalActivity(selectedPackage.name, 'VERIFY_FAILED', 'failure');
+            logLocalActivity(selectedPackage.name, 'DECRYPT', 'failure', { error: 'INVALID_PACKAGE' });
           } else if (errCode === 'INTEGRITY_FAILED') {
             setStep('ds-parse', 'done', '✓');
             setStep('ds-integrity', 'error', '✗ FAILED');
             showStatusBanner('TAMPERING DETECTED', 'error',
               errData.message || 'SHA-256 hash mismatch — the package has been tampered or corrupted.');
-            logLocalActivity(selectedPackage.name, 'VERIFY_FAILED', 'failure');
+            logLocalActivity(selectedPackage.name, 'DECRYPT', 'failure', { error: 'INTEGRITY_FAILED' });
           } else if (errCode === 'SIGNATURE_INVALID') {
             setStep('ds-parse', 'done', '✓');
             setStep('ds-integrity', 'done', '✓ VERIFIED');
             setStep('ds-sig', 'error', '✗ INVALID');
             showStatusBanner('DIGITAL SIGNATURE INVALID', 'error',
               errData.message || 'Signature verification failed — authenticity cannot be confirmed.');
-            logLocalActivity(selectedPackage.name, 'VERIFY_FAILED', 'failure');
+            logLocalActivity(selectedPackage.name, 'DECRYPT', 'failure', { error: 'SIGNATURE_INVALID' });
           } else if (errCode === 'DECRYPTION_FAILED') {
             setStep('ds-parse', 'done', '✓');
             setStep('ds-integrity', 'done', '✓ VERIFIED');
@@ -369,10 +356,11 @@
             setStep('ds-unwrap', 'error', '✗ FAILED');
             showStatusBanner('WRONG PASSPHRASE', 'error',
               'Decryption failed. The passphrase is incorrect or the package is corrupted.');
-            logLocalActivity(selectedPackage.name, 'VERIFY_FAILED', 'failure');
+            logLocalActivity(selectedPackage.name, 'DECRYPT', 'failure', { error: 'DECRYPTION_FAILED' });
           } else {
             setStep('ds-parse', 'error', '✗');
             showStatusBanner('ERROR', 'error', errData.error || 'An unexpected error occurred.');
+            logLocalActivity(selectedPackage.name, 'DECRYPT', 'failure', { error: errCode });
           }
           return;
         }
@@ -380,7 +368,17 @@
         // Animate remaining steps
         setStep('ds-parse', 'done', '✓');
         await stepDelay(150); setStep('ds-integrity', 'done', '✓ VERIFIED');
-        await stepDelay(150); setStep('ds-sig', 'done', response.headers.get('x-signature-ok') === 'N/A' ? '— UNSIGNED' : '✓ VERIFIED');
+        
+        await stepDelay(150);
+        const sigOk = response.headers.get('x-signature-ok');
+        if (sigOk === 'N/A') {
+          setStep('ds-sig', 'optional', 'NOT ENABLED');
+        } else if (sigOk === 'true') {
+          setStep('ds-sig', 'done', '✓ VERIFIED');
+        } else {
+          setStep('ds-sig', 'error', '✗ FAILED');
+        }
+
         await stepDelay(150); setStep('ds-pbkdf2', 'done', '✓');
         await stepDelay(150); setStep('ds-unwrap', 'done', '✓');
         await stepDelay(150); setStep('ds-decrypt', 'done', '✓');
@@ -399,11 +397,16 @@
         });
 
         showDecryptResult(h);
-        logLocalActivity(decryptedFilename, 'VERIFY_SUCCESS', 'success');
+        logLocalActivity(decryptedFilename, 'DECRYPT', 'success', {
+          timingMs: parseInt(h['x-total-time-ms'] || 0),
+          encTimingMs: parseInt(h['x-decryption-time-ms'] || 0),
+          signatureVerified: h['x-signature-ok'] === 'true'
+        });
         showToast('Decryption successful!', 'success');
       } catch (err) {
         setStep('ds-parse', 'error', '✗');
         showStatusBanner('ERROR', 'error', err.message);
+        logLocalActivity(selectedPackage ? selectedPackage.name : 'Unknown Package', 'DECRYPT', 'failure', { error: err.message });
         showToast(err.message, 'error');
       } finally {
         decryptBtn.disabled = false;

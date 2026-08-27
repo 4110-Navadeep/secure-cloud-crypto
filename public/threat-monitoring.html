@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Threat Monitoring — Secure Crypt</title>
+  <meta name="description" content="Security incidents panel tracking local events: integrity failures, signature verifications, and failed decryption attempts.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .threat-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    @media (max-width: 860px) { .threat-stats { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .threat-stats { grid-template-columns: 1fr; } }
+
+    .threat-stat {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px; padding: 1rem;
+    }
+    .threat-stat.danger { border-color: rgba(239,68,68,0.2); background: rgba(239,68,68,0.04); }
+    .threat-stat.warning { border-color: rgba(251,191,36,0.2); background: rgba(251,191,36,0.04); }
+    .threat-stat.success { border-color: rgba(56,189,148,0.2); background: rgba(56,189,148,0.04); }
+    .threat-stat-val { font-size: 2rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-bottom: 0.15rem; }
+    .threat-stat.danger .threat-stat-val { color: #ef4444; }
+    .threat-stat.warning .threat-stat-val { color: #fbbf24; }
+    .threat-stat.success .threat-stat-val { color: #38bd94; }
+    .threat-stat.neutral .threat-stat-val { color: #00b4d8; }
+    .threat-stat-label { font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; }
+
+    .log-panel { display: flex; flex-direction: column; gap: 0; margin-top: 0.5rem; }
+    .log-entry {
+      display: flex; align-items: flex-start; gap: 1rem; padding: 0.875rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.15s;
+    }
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry:hover { background: rgba(255,255,255,0.02); }
+    .log-entry-indicator {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 0.3rem;
+    }
+    .log-entry-indicator.success { background: #38bd94; box-shadow: 0 0 6px rgba(56,189,148,0.6); }
+    .log-entry-indicator.error { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.6); animation: pulse-red 1.5s infinite; }
+    .log-entry-indicator.warning { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,0.6); }
+    .log-entry-indicator.info { background: #00b4d8; }
+    @keyframes pulse-red {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+    }
+    .log-entry-body { flex: 1; min-width: 0; }
+    .log-entry-msg { font-size: 0.83rem; color: #cbd5e1; margin-bottom: 0.2rem; }
+    .log-entry-meta { font-size: 0.72rem; color: #4a5568; font-family: 'JetBrains Mono', monospace; }
+    .log-entry-tag {
+      font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 5px; flex-shrink: 0;
+    }
+    .log-entry-tag.success { background: rgba(56,189,148,0.12); color: #38bd94; }
+    .log-entry-tag.error { background: rgba(239,68,68,0.12); color: #ef4444; }
+    .log-entry-tag.warning { background: rgba(251,191,36,0.12); color: #fbbf24; }
+    .log-entry-tag.info { background: rgba(0,180,216,0.12); color: #00b4d8; }
+
+    .filter-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filter-btn {
+      font-size: 0.72rem; padding: 0.3rem 0.75rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.03); color: #94a3b8; cursor: pointer; transition: all 0.15s; font-family: inherit;
+    }
+    .filter-btn:hover { border-color: rgba(0,180,216,0.4); color: #00b4d8; }
+    .filter-btn.active { background: rgba(0,180,216,0.12); border-color: rgba(0,180,216,0.4); color: #00b4d8; }
+    .empty-log { text-align: center; padding: 2.5rem; color: #4a5568; font-size: 0.85rem; }
+  </style>
+</head>
+<body class="app-body">
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">&#9776;</button>
+          <h1 class="page-title">Threat Monitoring</h1>
+        </div>
+        <div class="header-actions">
+          <span class="security-status" id="threat-status-badge"><span class="dot"></span> MONITORING</span>
+          <button class="btn-outline btn-sm" id="clear-log-btn" style="font-size:0.75rem;margin-left:0.75rem;">&#128465; Clear Log</button>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <div class="page-header">
+          <div class="page-header-inner">
+            <h2 class="page-title">&#128683; Security Event Log</h2>
+            <span class="module-badge">LOCAL SESSION MONITORING</span>
+          </div>
+          <p class="page-subtitle">
+            Tracks security-relevant events from this browser session: integrity check results, signature verifications, and decryption failures. All data is local.
+          </p>
+        </div>
+
+        <!-- Stats -->
+        <div class="threat-stats">
+          <div class="threat-stat neutral">
+            <div class="threat-stat-val" id="t-total">0</div>
+            <div class="threat-stat-label">Total Events</div>
+          </div>
+          <div class="threat-stat success">
+            <div class="threat-stat-val" id="t-ok">0</div>
+            <div class="threat-stat-label">Operations OK</div>
+          </div>
+          <div class="threat-stat danger">
+            <div class="threat-stat-val" id="t-fail">0</div>
+            <div class="threat-stat-label">Failures / Tamper</div>
+          </div>
+          <div class="threat-stat warning">
+            <div class="threat-stat-val" id="t-sig">0</div>
+            <div class="threat-stat-label">Signatures Verified</div>
+          </div>
+        </div>
+
+        <!-- Log Panel -->
+        <div class="glass-card">
+          <div class="glass-card-header">
+            <div class="card-title-row">
+              <span class="card-icon">&#128220;</span>
+              <h2 class="card-title">Security Incidents Log</h2>
+            </div>
+          </div>
+          <div class="glass-card-body" style="padding-top:0;">
+            <div class="filter-row">
+              <button class="filter-btn active" data-filter="all">All Events</button>
+              <button class="filter-btn" data-filter="success">Success</button>
+              <button class="filter-btn" data-filter="error">Failures</button>
+              <button class="filter-btn" data-filter="ENCRYPT">Encryptions</button>
+              <button class="filter-btn" data-filter="DECRYPT">Decryptions</button>
+            </div>
+            <div class="log-panel" id="log-panel"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/js/shared.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script>
+    let currentFilter = 'all';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initSidebar('threat-monitoring');
+      renderLog();
+
+      document.getElementById('clear-log-btn').addEventListener('click', () => {
+        if (confirm('Clear all security event logs?')) { clearLocalActivity(); renderLog(); }
+      });
+
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentFilter = btn.dataset.filter;
+          renderLog();
+        });
+      });
+    });
+
+    function renderLog() {
+      const activity = getLocalActivity();
+      const total = activity.length;
+      const ok = activity.filter(a => a.status === 'success').length;
+      const fail = activity.filter(a => a.status !== 'success').length;
+      const sigOk = activity.filter(a => a.signatureVerified === true).length;
+
+      document.getElementById('t-total').textContent = total;
+      document.getElementById('t-ok').textContent = ok;
+      document.getElementById('t-fail').textContent = fail;
+      document.getElementById('t-sig').textContent = sigOk;
+
+      const badge = document.getElementById('threat-status-badge');
+      if (fail > 0) {
+        badge.className = 'security-status error';
+        badge.innerHTML = '<span class="dot"></span> INCIDENTS DETECTED';
+      } else {
+        badge.className = 'security-status verified';
+        badge.innerHTML = '<span class="dot"></span> ALL CLEAR';
+      }
+
+      let filtered = [...activity].reverse();
+      if (currentFilter !== 'all') {
+        filtered = filtered.filter(a => a.status === currentFilter || (a.operation || '').toUpperCase() === currentFilter.toUpperCase());
+      }
+
+      const panel = document.getElementById('log-panel');
+      if (!filtered.length) {
+        panel.innerHTML = '<div class="empty-log">No events match the current filter.</div>';
+        return;
+      }
+
+      panel.innerHTML = filtered.map(item => {
+        const isSuccess = item.status === 'success';
+        const op = (item.operation || 'UNKNOWN').toUpperCase();
+        const ts = item.timestamp ? new Date(item.timestamp).toLocaleString() : 'Unknown time';
+        let indClass = isSuccess ? 'success' : 'error';
+        let tagClass = isSuccess ? 'success' : 'error';
+        let tagLabel = isSuccess ? 'OK' : 'FAILED';
+        let msg = '';
+
+        if (op === 'ENCRYPT' && isSuccess) {
+          msg = `File encrypted successfully: <strong>${escHtml(item.filename || 'unknown')}</strong>. Integrity hash computed. Package generated.`;
+          indClass = 'success';
+        } else if (op === 'ENCRYPT' && !isSuccess) {
+          msg = `Encryption failed for: <strong>${escHtml(item.filename || 'unknown')}</strong>. ${escHtml(item.error || 'Unknown error.')}`;
+          indClass = 'error';
+        } else if (op === 'DECRYPT' && isSuccess) {
+          const sigInfo = item.signatureVerified === true ? ' Signature verified &#10003;.' : item.signatureVerified === false ? ' Signature FAILED &#10007;.' : ' No signature.';
+          msg = `File decrypted &amp; integrity verified: <strong>${escHtml(item.filename || 'unknown')}</strong>.${sigInfo}`;
+          if (item.signatureVerified === false) { indClass = 'warning'; tagClass = 'warning'; tagLabel = 'SIG FAIL'; }
+        } else if (op === 'DECRYPT' && !isSuccess) {
+          msg = `Decryption failed &mdash; possible tamper or wrong passphrase: <strong>${escHtml(item.filename || 'unknown')}</strong>.`;
+          indClass = 'error';
+        } else {
+          msg = `${op}: ${escHtml(item.filename || 'unknown')} &mdash; ${escHtml(item.status || '')}`;
+        }
+
+        return `
+          <div class="log-entry">
+            <div class="log-entry-indicator ${indClass}"></div>
+            <div class="log-entry-body">
+              <div class="log-entry-msg">${msg}</div>
+              <div class="log-entry-meta">${ts} &middot; ${op}</div>
+            </div>
+            <span class="log-entry-tag ${tagClass}">${tagLabel}</span>
+          </div>`;
+      }).join('');
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

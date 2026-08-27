@@ -66,27 +66,30 @@ function getMimeIcon(mime) {
 // Local Storage Activity & Statistics Logger
 // ============================================================
 
-function logLocalActivity(filename, action, status) {
+function logLocalActivity(filename, action, status, extras) {
   try {
     const history = JSON.parse(localStorage.getItem('sc_history') || '[]');
     const newEvent = {
       id: Date.now() + Math.random().toString(36).substr(2, 5),
       filename,
-      action, // 'ENCRYPT', 'SIGN', 'VERIFY_SUCCESS', 'VERIFY_FAILED'
-      status, // 'success', 'failure'
-      timestamp: new Date().toISOString()
+      action,
+      operation: action, // alias for consistency
+      status: status || 'success',
+      timestamp: new Date().toISOString(),
+      ...(extras || {})
     };
     history.unshift(newEvent);
     // Keep last 50 events
     if (history.length > 50) history.pop();
     localStorage.setItem('sc_history', JSON.stringify(history));
-    
+
     // Update stats
-    const stats = JSON.parse(localStorage.getItem('sc_stats') || '{"total":0,"encrypted":0,"signed":0,"verified":0}');
+    const stats = JSON.parse(localStorage.getItem('sc_stats') || '{"total":0,"encrypted":0,"decryptions":0,"signed":0,"verified":0}');
     stats.total++;
-    if (action === 'ENCRYPT') stats.encrypted++;
-    if (action === 'SIGN') stats.signed++;
-    if (action === 'VERIFY_SUCCESS' || action === 'VERIFY_FAILED') stats.verified++;
+    if (action === 'ENCRYPT') stats.encrypted = (stats.encrypted || 0) + 1;
+    if (action === 'DECRYPT') stats.decryptions = (stats.decryptions || 0) + 1;
+    if (action === 'SIGN') stats.signed = (stats.signed || 0) + 1;
+    if (action === 'VERIFY_SUCCESS' || action === 'VERIFY_FAILED') stats.verified = (stats.verified || 0) + 1;
     localStorage.setItem('sc_stats', JSON.stringify(stats));
   } catch (e) {
     console.error('[LOCAL_LOG] Error writing stats:', e);
@@ -95,9 +98,17 @@ function logLocalActivity(filename, action, status) {
 
 function getLocalStats() {
   try {
-    return JSON.parse(localStorage.getItem('sc_stats') || '{"total":0,"encrypted":0,"signed":0,"verified":0}');
+    const s = JSON.parse(localStorage.getItem('sc_stats') || '{}');
+    return {
+      total: s.total || 0,
+      encrypted: s.encrypted || 0,
+      encryptions: s.encrypted || 0,
+      decryptions: s.decryptions || 0,
+      signed: s.signed || 0,
+      verified: s.verified || 0,
+    };
   } catch (e) {
-    return { total: 0, encrypted: 0, signed: 0, verified: 0 };
+    return { total: 0, encrypted: 0, encryptions: 0, decryptions: 0, signed: 0, verified: 0 };
   }
 }
 

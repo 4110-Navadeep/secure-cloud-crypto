@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Files — Secure Crypt</title>
+  <meta name="description" content="View files processed in this local session. Tracks encrypted and decrypted files stored in browser localStorage.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .files-grid { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+    .file-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: flex; align-items: center; gap: 1rem;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .file-card:hover { border-color: rgba(0,180,216,0.3); background: rgba(0,180,216,0.03); }
+    .file-card-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .file-card-icon.encrypt { background: rgba(0,180,216,0.12); border: 1px solid rgba(0,180,216,0.25); }
+    .file-card-icon.decrypt { background: rgba(56,189,148,0.12); border: 1px solid rgba(56,189,148,0.25); }
+    .file-card-info { flex: 1; min-width: 0; }
+    .file-card-name { font-size: 0.9rem; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-card-meta { font-size: 0.75rem; color: #64748b; margin-top: 0.2rem; font-family: 'JetBrains Mono', monospace; }
+    .file-card-badge {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em;
+      padding: 0.2rem 0.6rem; border-radius: 6px; flex-shrink: 0;
+    }
+    .file-card-badge.encrypt { background: rgba(0,180,216,0.12); color: #00b4d8; border: 1px solid rgba(0,180,216,0.25); }
+    .file-card-badge.decrypt { background: rgba(56,189,148,0.12); color: #38bd94; border: 1px solid rgba(56,189,148,0.25); }
+    .file-card-status {
+      font-size: 0.65rem; font-weight: 600;
+      padding: 0.2rem 0.5rem; border-radius: 6px; flex-shrink: 0;
+    }
+    .file-card-status.success { background: rgba(56,189,148,0.1); color: #38bd94; }
+    .file-card-status.error { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .empty-state {
+      text-align: center; padding: 3rem 2rem;
+      background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.08);
+      border-radius: 16px; margin-top: 1rem;
+    }
+    .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+    .empty-state-title { font-size: 1.1rem; font-weight: 600; color: #e2e8f0; margin-bottom: 0.5rem; }
+    .empty-state-desc { font-size: 0.85rem; color: #64748b; max-width: 360px; margin: 0 auto 1.5rem; line-height: 1.6; }
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    @media (max-width: 600px) { .stats-row { grid-template-columns: 1fr; } }
+    .stat-mini {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px; padding: 0.875rem 1rem;
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .stat-mini-val { font-size: 1.4rem; font-weight: 700; color: #00b4d8; font-family: 'JetBrains Mono', monospace; }
+    .stat-mini-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; }
+    .session-note {
+      font-size: 0.78rem; color: #64748b; margin-top: 0.75rem;
+      padding: 0.6rem 0.875rem; border-radius: 8px;
+      background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.15);
+      display: flex; gap: 0.5rem; align-items: flex-start;
+    }
+  </style>
+</head>
+<body class="app-body">
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">&#9776;</button>
+          <h1 class="page-title">My Files</h1>
+        </div>
+        <div class="header-actions">
+          <button class="btn-outline btn-sm" id="clear-btn" style="font-size:0.75rem;">&#128465; Clear History</button>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <div class="page-header">
+          <div class="page-header-inner">
+            <h2 class="page-title">&#128193; Session File History</h2>
+            <span class="module-badge">LOCAL SESSION ONLY</span>
+          </div>
+          <p class="page-subtitle">
+            Tracks files processed during this browser session. Stored locally in your browser &mdash; no data is sent to any server.
+          </p>
+        </div>
+
+        <div class="session-note">
+          <span>&#9888;&#65039;</span>
+          <span>This history is stored in your browser's <code>localStorage</code>. Clearing browser data or private browsing will erase all records.</span>
+        </div>
+
+        <div class="stats-row" style="margin-top:1.25rem;" id="stats-row">
+          <div class="stat-mini">
+            <div>
+              <div class="stat-mini-val" id="stat-total">0</div>
+              <div class="stat-mini-label">Total Operations</div>
+            </div>
+          </div>
+          <div class="stat-mini">
+            <div>
+              <div class="stat-mini-val" id="stat-enc" style="color:#00b4d8;">0</div>
+              <div class="stat-mini-label">Encrypted</div>
+            </div>
+          </div>
+          <div class="stat-mini">
+            <div>
+              <div class="stat-mini-val" id="stat-dec" style="color:#38bd94;">0</div>
+              <div class="stat-mini-label">Decrypted</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="files-container"></div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/js/shared.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initSidebar('my-files');
+      renderFiles();
+
+      document.getElementById('clear-btn').addEventListener('click', () => {
+        if (confirm('Clear all session history? This cannot be undone.')) {
+          clearLocalActivity();
+          renderFiles();
+        }
+      });
+    });
+
+    function renderFiles() {
+      const container = document.getElementById('files-container');
+      const activity = getLocalActivity();
+      const stats = getLocalStats();
+
+      document.getElementById('stat-total').textContent = activity.length;
+      document.getElementById('stat-enc').textContent = stats.encryptions || 0;
+      document.getElementById('stat-dec').textContent = stats.decryptions || 0;
+
+      if (!activity.length) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">&#128193;</div>
+            <div class="empty-state-title">No Files Processed Yet</div>
+            <div class="empty-state-desc">
+              Encrypt or decrypt a file to see it appear here. All records are stored locally in your browser.
+            </div>
+            <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+              <a href="/encrypt.html" class="btn-primary">&#128274; Encrypt a File</a>
+              <a href="/verify.html" class="btn-outline">&#128275; Decrypt a Package</a>
+            </div>
+          </div>`;
+        return;
+      }
+
+      const sorted = [...activity].reverse();
+      const cards = sorted.map(item => {
+        const isEnc = (item.operation || '').toUpperCase() === 'ENCRYPT';
+        const icon = isEnc ? '&#128274;' : '&#128275;';
+        const badgeClass = isEnc ? 'encrypt' : 'decrypt';
+        const badgeLabel = isEnc ? 'ENCRYPTED' : 'DECRYPTED';
+        const statusClass = item.status === 'success' ? 'success' : 'error';
+        const statusLabel = item.status === 'success' ? '&#10003; OK' : '&#10007; FAILED';
+        const ts = item.timestamp ? new Date(item.timestamp).toLocaleString() : 'Unknown time';
+        return `
+          <div class="file-card">
+            <div class="file-card-icon ${badgeClass}">${icon}</div>
+            <div class="file-card-info">
+              <div class="file-card-name">${escHtml(item.filename || 'Unknown file')}</div>
+              <div class="file-card-meta">${ts}</div>
+            </div>
+            <span class="file-card-badge ${badgeClass}">${badgeLabel}</span>
+            <span class="file-card-status ${statusClass}">${statusLabel}</span>
+          </div>`;
+      }).join('');
+
+      container.innerHTML = `<div class="files-grid">${cards}</div>`;
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

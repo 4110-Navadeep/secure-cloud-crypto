@@ -3,178 +3,299 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>How It Works — Secure Crypt Hybrid Cryptography</title>
-  <meta name="description" content="Visual walkthrough of how file encryption, digital signatures, key wrapping, and integrity checks protect your files.">
+  <title>How It Works — Secure Crypt</title>
+  <meta name="description" content="Understand the hybrid cryptographic architecture of Secure Crypt: AES-256-GCM encryption, RSA-2048 key wrapping, SHA-256 integrity, and RSA-SHA256 digital signatures.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .arch-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-top: 1.5rem;
+    }
+    @media (max-width: 900px) { .arch-grid { grid-template-columns: 1fr; } }
+    .arch-column { display: flex; flex-direction: column; gap: 0; }
+    .arch-column-title {
+      display: flex; align-items: center; gap: 0.75rem;
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; margin-bottom: 1.25rem;
+      padding: 0.6rem 1rem; border-radius: 8px;
+    }
+    .arch-column-title.encrypt { background: rgba(0,180,216,0.12); color: #00b4d8; border: 1px solid rgba(0,180,216,0.25); }
+    .arch-column-title.decrypt { background: rgba(56,189,148,0.12); color: #38bd94; border: 1px solid rgba(56,189,148,0.25); }
+    .step-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 1.1rem 1.25rem;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .step-card:hover { border-color: rgba(0,180,216,0.35); background: rgba(0,180,216,0.04); }
+    .step-card-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(0,180,216,0.15); border: 1px solid rgba(0,180,216,0.4);
+      color: #00b4d8; font-size: 0.7rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .step-num.green { background: rgba(56,189,148,0.15); border-color: rgba(56,189,148,0.4); color: #38bd94; }
+    .step-card-title { font-size: 0.875rem; font-weight: 600; color: #e2e8f0; }
+    .step-card-algo {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+      color: #00b4d8; background: rgba(0,180,216,0.08);
+      padding: 0.15rem 0.5rem; border-radius: 4px; margin-left: auto;
+    }
+    .step-card-algo.green { color: #38bd94; background: rgba(56,189,148,0.08); }
+    .step-card-desc { font-size: 0.8rem; color: #94a3b8; line-height: 1.55; padding-left: 2.5rem; }
+    .step-arrow {
+      text-align: center; padding: 0.4rem 0;
+      color: #00b4d8; font-size: 1rem; line-height: 1;
+      animation: pulse-down 1.8s ease-in-out infinite;
+    }
+    .step-arrow.green { color: #38bd94; }
+    @keyframes pulse-down {
+      0%, 100% { opacity: 0.4; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(3px); }
+    }
+    .result-card {
+      margin-top: 0.5rem;
+      background: rgba(0,180,216,0.06);
+      border: 1px solid rgba(0,180,216,0.25);
+      border-radius: 12px; padding: 1rem 1.25rem;
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .result-card.green { background: rgba(56,189,148,0.06); border-color: rgba(56,189,148,0.25); }
+    .result-icon { font-size: 1.5rem; }
+    .result-label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; }
+    .result-value { font-size: 0.875rem; font-weight: 600; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; }
+    .sig-optional-tag {
+      font-size: 0.65rem; padding: 0.1rem 0.45rem; border-radius: 4px;
+      background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.3);
+      color: #fbbf24; font-weight: 600; letter-spacing: 0.06em; margin-left: 0.4rem;
+    }
+    .legend-grid { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1rem; }
+    .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #94a3b8; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .legend-dot.blue { background: #00b4d8; }
+    .legend-dot.green { background: #38bd94; }
+    .legend-dot.amber { background: #fbbf24; }
+  </style>
 </head>
 <body class="app-body">
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div class="d-flex align-center gap-12">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">&#9776;</button>
+          <h1 class="page-title">Architecture</h1>
+        </div>
+        <div class="header-actions">
+          <span class="security-status verified"><span class="dot"></span> AES-256 &middot; RSA-2048 &middot; SHA-256</span>
+        </div>
+      </header>
 
-  <!-- Navigation -->
-  <nav class="app-nav">
-    <a href="/" class="nav-brand">
-      <span class="brand-icon">🔐</span>
-      <span class="brand-name">SECURE <span class="brand-accent">CRYPT</span></span>
-    </a>
-    <div class="app-nav-links">
-      <a href="/" class="app-nav-link">Home</a>
-      <a href="/dashboard.html" class="app-nav-link">Dashboard</a>
-      <a href="/encrypt.html" class="app-nav-link">Secure File</a>
-      <a href="/verify.html" class="app-nav-link">Verify</a>
-      <a href="/how-it-works.html" class="app-nav-link active">How It Works</a>
-      <a href="/security.html" class="app-nav-link">Security</a>
+      <main class="app-main">
+        <div class="page-header">
+          <div class="page-header-inner">
+            <h2 class="page-title">&#128302; How It Works</h2>
+            <span class="module-badge">HYBRID CRYPTOGRAPHIC ARCHITECTURE</span>
+          </div>
+          <p class="page-subtitle">
+            A stateless hybrid cryptography system &mdash; no cloud, no database. All operations run in-memory on the server.
+            Your file is encrypted via server API and returned as a self-contained <code>.secure</code> package.
+          </p>
+        </div>
+
+        <div class="arch-grid">
+          <!-- ENCRYPTION FLOW -->
+          <div class="arch-column">
+            <div class="arch-column-title encrypt">&#128274; Encryption Flow</div>
+
+            <div class="step-card">
+              <div class="step-card-header">
+                <div class="step-num">1</div>
+                <span class="step-card-title">File Upload</span>
+                <span class="step-card-algo">multipart/form-data</span>
+              </div>
+              <div class="step-card-desc">User selects any file and enters a passphrase. The file is uploaded via multipart HTTP POST &mdash; never stored on disk.</div>
+            </div>
+            <div class="step-arrow">&#8595;</div>
+
+            <div class="step-card">
+              <div class="step-card-header">
+                <div class="step-num">2</div>
+                <span class="step-card-title">RSA Key Pair Generation</span>
+                <span class="step-card-algo">RSA-2048-OAEP</span>
+              </div>
+              <div class="step-card-desc">A fresh RSA-2048 key pair is generated in-memory for each request. The public key wraps the AES key; the private key is discarded unless signing.</div>
+            </div>
+            <div class="step-arrow">&#8595;</div>
+
+            <div class="step-card">
+              <div class="step-card-header">
+                <div class="step-num">3</div>
+                <span class="step-card-title">AES-256-GCM Encryption</span>
+                <span class="step-card-algo">AES-256-GCM</span>
+              </div>
+              <div class="step-card-desc">A random 256-bit AES key and 96-bit IV are generated. The file is encrypted with AES-256-GCM, producing ciphertext + a 16-byte authentication tag.</div>
+            </div>
+            <div class="step-arrow">&#8595;</div>
+
+            <div class="step-card">
+              <div class="step-card-header">
+                <div class="step-num">4</div>
+                <span class="step-card-title">RSA Key Wrapping</span>
+                <span class="step-card-algo">OAEP + SHA-256</span>
+              </div>
+              <div class="step-card-desc">The AES key is encrypted with the RSA public key (OAEP/SHA-256 padding). The RSA private key is re-encrypted using the passphrase via PBKDF2.</div>
+            </div>
+            <div class="step-arrow">&#8595;</div>
+
+            <div class="step-card">
+              <div class="step-card-header">
+                <div class="step-num">5</div>
+                <span class="step-card-title">SHA-256 Integrity Hash</span>
+                <span class="step-card-algo">SHA-256</span>
+              </div>
+              <div class="step-card-desc">A SHA-256 hash of the original file is computed and embedded in the package. This allows tamper detection during decryption.</div>
+            </div>
+            <div class="step-arrow">&#8595;</div>
+
+            <div class="step-card">
+              <div class="step-card-header">
+                <div class="step-num">6</div>
+                <span class="step-card-title">Digital Signature <span class="sig-optional-tag">OPTIONAL</span></span>
+                <span class="step-card-algo">RSA-SHA256</span>
+              </div>
+              <div class="step-card-desc">If enabled, the SHA-256 hash is signed with the RSA private key. The signature and public key are embedded in the package for authenticity verification.</div>
+            </div>
+            <div class="step-arrow">&#8595;</div>
+
+            <div class="result-card">
+              <span class="result-icon">&#128230;</span>
+              <div>
+                <div class="result-label">Output Package</div>
+                <div class="result-value">filename.secure (JSON)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- DECRYPTION FLOW -->
+          <div class="arch-column">
+            <div class="arch-column-title decrypt">&#128275; Decryption Flow</div>
+
+            <div class="step-card">
+              <div class="step-card-header">
+                <div class="step-num green">1</div>
+                <span class="step-card-title">Package Upload</span>
+                <span class="step-card-algo green">multipart/form-data</span>
+              </div>
+              <div class="step-card-desc">Recipient uploads the <code>.secure</code> package and enters the passphrase used during encryption.</div>
+            </div>
+            <div class="step-arrow green">&#8595;</div>
+
+            <div class="step-card">
+              <div class="step-card-header">
+                <div class="step-num green">2</div>
+                <span class="step-card-title">RSA Private Key Recovery</span>
+                <span class="step-card-algo green">PBKDF2 + AES-GCM</span>
+              </div>
+              <div class="step-card-desc">The passphrase is run through PBKDF2 (100,000 iterations, SHA-256) to derive the key that decrypts the wrapped RSA private key stored in the package.</div>
+            </div>
+            <div class="step-arrow green">&#8595;</div>
+
+            <div class="step-card">
+              <div class="step-card-header">
+                <div class="step-num green">3</div>
+                <span class="step-card-title">AES Key Unwrapping</span>
+                <span class="step-card-algo green">RSA-2048-OAEP</span>
+              </div>
+              <div class="step-card-desc">The RSA private key decrypts the wrapped AES key using OAEP padding. If the passphrase is wrong, this step fails and decryption is aborted.</div>
+            </div>
+            <div class="step-arrow green">&#8595;</div>
+
+            <div class="step-card">
+              <div class="step-card-header">
+                <div class="step-num green">4</div>
+                <span class="step-card-title">AES-256-GCM Decryption</span>
+                <span class="step-card-algo green">AES-256-GCM</span>
+              </div>
+              <div class="step-card-desc">The AES key decrypts the ciphertext. The GCM authentication tag is verified automatically &mdash; any bit-level tampering causes an authentication failure.</div>
+            </div>
+            <div class="step-arrow green">&#8595;</div>
+
+            <div class="step-card">
+              <div class="step-card-header">
+                <div class="step-num green">5</div>
+                <span class="step-card-title">SHA-256 Integrity Check</span>
+                <span class="step-card-algo green">SHA-256</span>
+              </div>
+              <div class="step-card-desc">The decrypted file is re-hashed and compared to the stored hash. A mismatch blocks the download &mdash; the file has been tampered with.</div>
+            </div>
+            <div class="step-arrow green">&#8595;</div>
+
+            <div class="step-card">
+              <div class="step-card-header">
+                <div class="step-num green">6</div>
+                <span class="step-card-title">Signature Verification <span class="sig-optional-tag">OPTIONAL</span></span>
+                <span class="step-card-algo green">RSA-SHA256</span>
+              </div>
+              <div class="step-card-desc">If the package includes a signature, the embedded public key verifies the RSA-SHA256 signature against the file hash &mdash; proving origin authenticity.</div>
+            </div>
+            <div class="step-arrow green">&#8595;</div>
+
+            <div class="result-card green">
+              <span class="result-icon">&#128196;</span>
+              <div>
+                <div class="result-label">Recovered File</div>
+                <div class="result-value">original_filename (restored)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Package Structure -->
+        <div class="glass-card" style="margin-top:2rem;">
+          <div class="glass-card-header">
+            <div class="card-title-row">
+              <span class="card-icon">&#128203;</span>
+              <h2 class="card-title">Package Structure</h2>
+            </div>
+          </div>
+          <div class="glass-card-body">
+            <p style="font-size:0.85rem;color:#94a3b8;margin-bottom:1rem;">The <code>.secure</code> file is a self-contained JSON package containing all cryptographic material needed for decryption &mdash; no server lookup required.</p>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;background:rgba(0,0,0,0.3);border-radius:8px;padding:1rem;color:#94a3b8;line-height:1.8;border:1px solid rgba(255,255,255,0.06);">
+              <span style="color:#e2e8f0;">{</span><br>
+              &nbsp;&nbsp;<span style="color:#00b4d8;">"ciphertext"</span>: <span style="color:#38bd94;">"Base64..."</span>,<span style="color:#4a5568;">  // AES-GCM encrypted file</span><br>
+              &nbsp;&nbsp;<span style="color:#00b4d8;">"iv"</span>: <span style="color:#38bd94;">"Base64..."</span>,<span style="color:#4a5568;">          // 96-bit random IV</span><br>
+              &nbsp;&nbsp;<span style="color:#00b4d8;">"authTag"</span>: <span style="color:#38bd94;">"Base64..."</span>,<span style="color:#4a5568;">     // GCM authentication tag</span><br>
+              &nbsp;&nbsp;<span style="color:#00b4d8;">"wrappedKey"</span>: <span style="color:#38bd94;">"Hex..."</span>,<span style="color:#4a5568;">    // RSA-OAEP encrypted AES key</span><br>
+              &nbsp;&nbsp;<span style="color:#00b4d8;">"encryptedPrivateKey"</span>: <span style="color:#38bd94;">"{...}"</span>,<span style="color:#4a5568;"> // PBKDF2-protected RSA private key</span><br>
+              &nbsp;&nbsp;<span style="color:#00b4d8;">"salt"</span>: <span style="color:#38bd94;">"Hex..."</span>,<span style="color:#4a5568;">        // PBKDF2 salt</span><br>
+              &nbsp;&nbsp;<span style="color:#00b4d8;">"sha256Hash"</span>: <span style="color:#38bd94;">"Hex..."</span>,<span style="color:#4a5568;">   // SHA-256 of original file</span><br>
+              &nbsp;&nbsp;<span style="color:#fbbf24;">"signature"</span>: <span style="color:#38bd94;">"Hex..."</span>,<span style="color:#4a5568;">    // RSA-SHA256 signature (optional)</span><br>
+              &nbsp;&nbsp;<span style="color:#fbbf24;">"signerPublicKey"</span>: <span style="color:#38bd94;">"PEM..."</span><span style="color:#4a5568;">  // Signer's public key (optional)</span><br>
+              <span style="color:#e2e8f0;">}</span>
+            </div>
+            <div class="legend-grid">
+              <div class="legend-item"><span class="legend-dot blue"></span> Core cryptographic fields</div>
+              <div class="legend-item"><span class="legend-dot amber"></span> Optional signature fields</div>
+              <div class="legend-item"><span class="legend-dot green"></span> Integrity fields</div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
-    <div class="app-nav-cta">
-      <a href="/encrypt.html" class="btn-nav-cta">Get Started</a>
-    </div>
-    <button class="hamburger" id="hamburger-btn" aria-label="Menu">☰</button>
-  </nav>
+  </div>
 
-  <!-- Main Content -->
-  <main class="app-main">
-    <div class="page-header">
-      <div class="page-header-inner">
-        <h1 class="page-title">⚙️ How Secure File Protection Works</h1>
-        <span class="module-badge">SYSTEM WORKFLOW</span>
-      </div>
-      <p class="page-subtitle">
-        Understand the cryptographic pipeline that guarantees zero-trust protection for your sensitive documents.
-      </p>
-    </div>
-
-    <!-- Timeline Layout -->
-    <div class="timeline-container">
-      
-      <!-- Step 1 -->
-      <div class="timeline-block">
-        <div class="timeline-step-badge">01</div>
-        <div class="timeline-card glass-card">
-          <div class="timeline-card-header">
-            <span class="timeline-icon">📤</span>
-            <h3>Step 1: Local File Selection</h3>
-          </div>
-          <div class="timeline-body">
-            <p>You select any document, image, audio, or archive (up to 100 MB) inside the web interface. Your file is read in-memory, preparing it for the local hybrid cryptographic pipeline.</p>
-            <div class="timeline-detail-box">
-              <span>💡</span>
-              <span><strong>Zero File Storing:</strong> The original file payload is never written to server disk or hosted in a cloud storage bucket. The server treats files statelessly.</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 2 -->
-      <div class="timeline-block">
-        <div class="timeline-step-badge">02</div>
-        <div class="timeline-card glass-card">
-          <div class="timeline-card-header">
-            <span class="timeline-icon">🔐</span>
-            <h3>Step 2: Symmetric File Encryption</h3>
-          </div>
-          <div class="timeline-body">
-            <p>The application generates an ephemeral, cryptographically secure 256-bit AES key and a 96-bit Initialization Vector (IV). The file's plaintext is then encrypted using the <strong>AES-256-GCM</strong> cipher, yielding the ciphertext and a 128-bit authentication tag.</p>
-            <div class="timeline-metrics">
-              <span class="metric-badge cyan">AES-256-GCM</span>
-              <span class="metric-badge purple">Authenticated Encryption</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 3 -->
-      <div class="timeline-block">
-        <div class="timeline-step-badge">03</div>
-        <div class="timeline-card glass-card">
-          <div class="timeline-card-header">
-            <span class="timeline-icon">🗝️</span>
-            <h3>Step 3: Key Wrapping &amp; Protection</h3>
-          </div>
-          <div class="timeline-body">
-            <p>To safely transmit the encryption key, the AES session key is wrapped using <strong>RSA-2048-OAEP</strong> asymmetric encryption. Additionally, the AES session key is wrapped with a key derived from your passphrase using <strong>PBKDF2-SHA256</strong> with 310,000 iterations and a random salt.</p>
-            <div class="timeline-metrics">
-              <span class="metric-badge cyan">RSA-2048-OAEP</span>
-              <span class="metric-badge orange">PBKDF2 (310K Iterations)</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 4 -->
-      <div class="timeline-block">
-        <div class="timeline-step-badge">04</div>
-        <div class="timeline-card glass-card">
-          <div class="timeline-card-header">
-            <span class="timeline-icon">✍️</span>
-            <h3>Step 4: Digital Signature Generation</h3>
-          </div>
-          <div class="timeline-body">
-            <p>A SHA-256 hash of the ciphertext is generated. If digital signature is enabled, this hash along with the filename is signed using the session's private key via <strong>RSA-SHA256</strong>. The corresponding public key is embedded in the package to allow anyone to verify its authenticity.</p>
-            <div class="timeline-metrics">
-              <span class="metric-badge green">RSA-SHA256 Digital Signature</span>
-              <span class="metric-badge cyan">SHA-256 Integrity Hash</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 5 -->
-      <div class="timeline-block">
-        <div class="timeline-step-badge">05</div>
-        <div class="timeline-card glass-card">
-          <div class="timeline-card-header">
-            <span class="timeline-icon">📦</span>
-            <h3>Step 5: Package Download &amp; Storage</h3>
-          </div>
-          <div class="timeline-body">
-            <p>The system packages all cryptographic materials (wrapped keys, IV, auth tag, salt, digital signature, embedded public key, and base64 ciphertext) into a single self-contained <code>.secure</code> package file. You download this file directly to your local storage.</p>
-            <div class="timeline-detail-box">
-              <span>💾</span>
-              <span><strong>Your Choice:</strong> You decide where to save or share this package—via WhatsApp, Email, cloud hosting, or USB drive. It remains secure wherever it sits.</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 6 -->
-      <div class="timeline-block">
-        <div class="timeline-step-badge">06</div>
-        <div class="timeline-card glass-card">
-          <div class="timeline-card-header">
-            <span class="timeline-icon">🔓</span>
-            <h3>Step 6: Recipients Verify &amp; Decrypt</h3>
-          </div>
-          <div class="timeline-body">
-            <p>When the recipient uploads the <code>.secure</code> package, the system validates the SHA-256 integrity hash and verifies the RSA digital signature. Upon inputting the correct passphrase, the AES key is unwrapped and the original plaintext is decrypted for download.</p>
-            <div class="timeline-metrics">
-              <span class="metric-badge green">Signature Verified</span>
-              <span class="metric-badge cyan">Integrity Validated</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </main>
-
-  <!-- Footer -->
-  <footer class="home-footer">
-    <div class="footer-content">
-      <div class="footer-brand">
-        <span class="brand-icon">🔐</span> SECURE CRYPT
-        <span class="footer-tagline">— Hybrid Cryptography System</span>
-      </div>
-      <div class="footer-actions">
-        <a href="/encrypt.html" class="btn-footer">🔒 Secure File</a>
-        <a href="/verify.html" class="btn-footer btn-footer-outline">🔓 Open Package</a>
-      </div>
-      <div class="footer-meta">
-        © 2026 Secure Cloud Crypto · Capstone Project
-      </div>
-    </div>
-  </footer>
-
-  <script src="/js/shared.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initSidebar('how-it-works');
+    });
+  </script>
 </body>
 </html>
