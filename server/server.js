@@ -127,8 +127,8 @@ app.use((err, req, res, next) => {
 // Startup
 // ---------------------------------------------------------------------------
 async function start() {
-  const PORT = Number(process.env.PORT || 5000);
-  app.listen(PORT, '0.0.0.0', () => {
+  const PORT = process.env.PORT || 5000;
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`[SERVER] Secure Cloud Cryptography System started.`);
     console.log(`[SERVER] Listening on http://0.0.0.0:${PORT}`);
     console.log(`[SERVER] Mode: ${process.env.NODE_ENV || 'development'}`);

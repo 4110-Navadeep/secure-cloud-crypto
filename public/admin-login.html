@@ -45,50 +45,8 @@
         </button>
       </form>
 
-      <div class="auth-footer-links" style="justify-content: space-between;">
-        <a href="/login.html" class="auth-link">User Login</a>
-        <a href="#" id="bootstrap-admin-link" class="auth-link" style="color:#b39ddb;">Bootstrap Admin</a>
-      </div>
-    </div>
-
-    <!-- Bootstrap Tab -->
-    <div class="auth-card admin-card hidden" id="setup-tab">
-      <div class="auth-header">
-        <div class="auth-logo admin-logo">
-          <span>⚙️</span> BOOTSTRAP <span style="color: #b39ddb;">ADMIN</span>
-        </div>
-        <div class="auth-subtitle">Setup the primary administrator (Once-off)</div>
-      </div>
-
-      <form id="setup-form">
-        <div class="auth-form-group">
-          <label class="auth-label" for="setup-token">Setup Token (from .env)</label>
-          <input class="auth-input" type="password" id="setup-token" placeholder="ADMIN_SETUP_TOKEN" required>
-        </div>
-
-        <div class="auth-form-group">
-          <label class="auth-label" for="setup-name">Admin Name</label>
-          <input class="auth-input" type="text" id="setup-name" placeholder="Super User" required>
-        </div>
-
-        <div class="auth-form-group">
-          <label class="auth-label" for="setup-email">Admin Email</label>
-          <input class="auth-input" type="email" id="setup-email" placeholder="admin@domain.com" required>
-        </div>
-
-        <div class="auth-form-group">
-          <label class="auth-label" for="setup-password">Setup Password (min 10 chars)</label>
-          <input class="auth-input" type="password" id="setup-password" placeholder="••••••••••" required>
-        </div>
-
-        <button type="submit" class="btn-decrypt-lg w-full" style="margin: 20px 0; width: 100%;" id="setup-btn">
-          <span id="setup-btn-text">🏗️ Initialize Admin</span>
-          <span id="setup-spinner" class="btn-spinner hidden"></span>
-        </button>
-      </form>
-
       <div class="auth-footer-links" style="justify-content: center;">
-        <a href="#" id="back-to-login-link" class="auth-link">Back to Admin Login</a>
+        <a href="/login.html" class="auth-link">User Login</a>
       </div>
     </div>
   </div>
@@ -99,23 +57,6 @@
     if (isLoggedIn() && isAdmin()) {
       window.location.href = '/admin-panel.html';
     }
-
-    function toggleTab(id) {
-      document.getElementById('login-tab').classList.add('hidden');
-      document.getElementById('setup-tab').classList.add('hidden');
-      document.getElementById(id).classList.remove('hidden');
-    }
-
-    // Attach Bootstrap Admin and Back to Login via addEventListener (not inline onclick)
-    document.getElementById('bootstrap-admin-link').addEventListener('click', function(e) {
-      e.preventDefault();
-      toggleTab('setup-tab');
-    });
-
-    document.getElementById('back-to-login-link').addEventListener('click', function(e) {
-      e.preventDefault();
-      toggleTab('login-tab');
-    });
 
     // Login Form
     const loginForm = document.getElementById('admin-login-form');
@@ -146,41 +87,6 @@
         loginBtn.disabled = false;
         document.getElementById('login-btn-text').textContent = '🛡️ Unlock Console';
         document.getElementById('login-spinner').classList.add('hidden');
-      }
-    });
-
-    // Setup Form
-    const setupForm = document.getElementById('setup-form');
-    const setupBtn = document.getElementById('setup-btn');
-    setupForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const token = document.getElementById('setup-token').value;
-      const name = document.getElementById('setup-name').value.trim();
-      const email = document.getElementById('setup-email').value.trim();
-      const password = document.getElementById('setup-password').value;
-
-      setupBtn.disabled = true;
-      document.getElementById('setup-btn-text').textContent = 'Deploying...';
-      document.getElementById('setup-spinner').classList.remove('hidden');
-
-      try {
-        const response = await fetch('/api/auth/admin/setup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, name, email, password })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Bootstrap failed.');
-
-        showToast('Primary administrator created successfully! Please login.', 'success');
-        setupForm.reset();
-        setTimeout(() => { toggleTab('login-tab'); }, 1500);
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        setupBtn.disabled = false;
-        document.getElementById('setup-btn-text').textContent = '🏗️ Initialize Admin';
-        document.getElementById('setup-spinner').classList.add('hidden');
       }
     });
   </script>

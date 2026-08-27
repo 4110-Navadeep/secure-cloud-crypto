@@ -6,6 +6,30 @@ const { signToken } = require('../middleware/authMiddleware');
 
 const BCRYPT_ROUNDS = 12;
 
+// Seed default admin account automatically on startup
+async function seedDefaultAdmin() {
+  try {
+    const defaultEmail = 'admin@securecrypt.com';
+    const defaultPassword = 'SecureCrypt@123';
+    const existing = store.findOne('admins', a => a.email.toLowerCase() === defaultEmail);
+    if (!existing) {
+      const passwordHash = await bcrypt.hash(defaultPassword, BCRYPT_ROUNDS);
+      store.insert('admins', {
+        id: uuidv4(),
+        name: 'Default Admin',
+        email: defaultEmail,
+        passwordHash,
+        role: 'primary_admin',
+        createdAt: new Date().toISOString(),
+      });
+      console.log('[AUTH] Seeded default admin account successfully.');
+    }
+  } catch (err) {
+    console.error('[AUTH] Seeding default admin failed:', err.message);
+  }
+}
+seedDefaultAdmin();
+
 // ---------------------------------------------------------------------------
 // POST /api/auth/register
 // ---------------------------------------------------------------------------
@@ -128,48 +152,7 @@ async function adminLogin(req, res) {
 // POST /api/auth/admin/setup  (one-time bootstrap)
 // ---------------------------------------------------------------------------
 async function adminSetup(req, res) {
-  try {
-    const setupToken = process.env.ADMIN_SETUP_TOKEN;
-    if (!setupToken) {
-      return res.status(403).json({ error: 'Admin setup is not configured on this server.' });
-    }
-
-    const { token, name, email, password } = req.body;
-    if (token !== setupToken) {
-      return res.status(403).json({ error: 'Invalid setup token.' });
-    }
-
-    // Only allow setup if no admins exist yet
-    const admins = store.readAll('admins');
-    if (admins.length > 0) {
-      return res.status(409).json({ error: 'Admin account already exists. Setup can only be run once.' });
-    }
-
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required.' });
-    }
-    if (password.length < 10) {
-      return res.status(400).json({ error: 'Admin password must be at least 10 characters.' });
-    }
-
-    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-    const admin = store.insert('admins', {
-      id: uuidv4(),
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
-      passwordHash,
-      role: 'primary_admin',
-      createdAt: new Date().toISOString(),
-    });
-
-    return res.status(201).json({
-      message: 'Primary administrator created successfully.',
-      admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role },
-    });
-  } catch (err) {
-    console.error('[AUTH] Admin setup error:', err.message);
-    return res.status(500).json({ error: 'Setup failed.' });
-  }
+  return res.status(403).json({ error: 'Manual admin bootstrap is disabled. Please login directly using the default admin account.' });
 }
 
 // ---------------------------------------------------------------------------
